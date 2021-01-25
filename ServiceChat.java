@@ -11,9 +11,11 @@ public class ServiceChat extends Thread {
 	static PrintStream[] outputs = new PrintStream[NB_USERS_MAX];
 	Socket socket;
 	static int nb_users = 0;
-	//static String[] usernames = new String[NB_USERS_MAX];
+	static String[] usernames = new String[NB_USERS_MAX];
+	static String[] passwords = new String[NB_USERS_MAX];
 	static ServiceChat[] serviceChat = new ServiceChat[NB_USERS_MAX];
 	String username;
+	String password;
 	int id_user;
 	boolean loop= true;
 
@@ -67,18 +69,25 @@ public class ServiceChat extends Thread {
 			output.println("Welcome on chat");
 			output.println("Enter your username: ");
 			this.username = getMessage();
-			
-			// do{
-			// 	output.println("Enter your username: ");
-			// 	this.username = getMessage();
-			// }while(!isUsernameAvailable(this.username));
-	
-			//output.println("DEBUG: ID user = "+id_user);
 
-			//usernames[id_user] = this.username;
-			
-			broadCast("[SYSTEM] " + username + " has join the chat");
-			//output.println("DEBUG: nbUsers = "+nb_users);
+			if(usernameExist(this.username)){
+				output.println("Enter the password for username '"+this.username+"'...");
+				this.password = getMessage();
+				if(checkPassword(this.username, this.password))
+				{
+					broadCast("[SYSTEM] " + username + " has join the chat");
+					return true;
+				}else{
+					return false;
+				}
+			}
+			else{
+				output.println("Enter your password: ");
+				this.password = getMessage();
+				insert(usernames, this.username);
+				insert(passwords, this.password);
+			}
+
 			return true;
 		}
 	}
@@ -133,13 +142,29 @@ public class ServiceChat extends Thread {
 		}
 	}
 
-	// 	private boolean isUsernameAvailable(String name){
-	// 		for(int i = 0; i< nb_users; i++){
-	// 			if(usernames[i].equals(name)){
-	// 				output.println("Error: This username is already taken !");
-	// 				return false;
-	// 			}
-	// 		}
-	// 		return true;
-	// 	}
+		private boolean usernameExist(String name){
+			for(int i = 0; i< usernames.length; i++){
+				if(usernames[i].equals(name)){
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private void insert(String[] array,String item){
+
+		}
+
+		private boolean checkPassword(String user,String pass){
+			for(int i = 0; i< usernames.length; i++){
+				if(usernames[i].equals(user)){
+					if(passwords[i].equals(pass)){
+						return true;
+					}
+					else{
+						return false;
+					}
+				}
+			}
+		}
 }
