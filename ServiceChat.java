@@ -118,15 +118,25 @@ public class ServiceChat extends Thread {
 	}
 
 	private void analyseMessage(String msg) {
-		switch (msg) {
+		String[] command = msg.split(" ");
+		switch (command[0]) {
 			case "/quit":
 				disconnect("");
 				break;
 			case "/list":
 				userList();
 				break;
+			case "/send":
+				int userID = getUserID(command[1]);
+				if(userID == -1){
+					output.println("Error: The user '"+command[1]+"' does not exist or is not online !");
+				}else{
+					send(userID, command);
+				}
+				
+				break;	
 			default:
-				broadCast("<" + username + "> " + msg);
+				broadCast("<" + this.username + "> " + msg);
 		}
 	}
 
@@ -184,5 +194,21 @@ public class ServiceChat extends Thread {
 			if(serviceChat[i].isOnline)
 				output.println(serviceChat[i].username);
 		}
+	}
+
+	private int getUserID(String username){
+		for (int i = 0; i < nb_users; i++) {
+			if(serviceChat[i].username.equals(username)){
+				return i;
+			}
+		}
+		return -1;
+	}
+	private void send(int userID, String[] command){
+		outputs[userID].print("<" + this.username + "> ");
+		for (int i = 2; i < command.length; i++) {
+			outputs[userID].print(command[i]+" ");
+		}
+		outputs[userID].println();
 	}
 }
