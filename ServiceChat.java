@@ -17,6 +17,7 @@ public class ServiceChat extends Thread {
 	static ServiceChat[] serviceChat = new ServiceChat[NB_USERS_MAX];
 	String username;
 	String password;
+	boolean isOnline = false;
 	int id_user;
 	boolean loop = true;
 
@@ -72,6 +73,8 @@ public class ServiceChat extends Thread {
 				this.password = getMessage();
 				if (checkPassword(this.username, this.password)) {
 					broadCast("[SYSTEM] " + username + " has join the chat");
+					this.isOnline = true;
+					userList();
 					return true;
 				} else {
 					disconnect("error");
@@ -83,6 +86,8 @@ public class ServiceChat extends Thread {
 				usernames.add(this.username);
 				passwords.add(this.password);
 				broadCast("[SYSTEM] " + username + " has join the chat");
+				this.isOnline = true;
+				userList();
 			}
 
 			return true;
@@ -117,7 +122,9 @@ public class ServiceChat extends Thread {
 			case "/quit":
 				disconnect("");
 				break;
-
+			case "/list":
+				userList();
+				break;
 			default:
 				broadCast("<" + username + "> " + msg);
 		}
@@ -148,11 +155,24 @@ public class ServiceChat extends Thread {
 			nb_users--;
 			//output.println("[DEBUG] nbUser =" + nb_users);
 			if(!flag.equals("error"))broadCast("[SYSTEM] " + username + " has left!");
+			this.isOnline = false;
 			socket.close();
 			loop = false;
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.out.println("Erreur /quit");
+		}
+	}
+
+	private void userList(){
+		output.println("User List: ");
+		for (int i =0;i < serviceChat.length;i++) {
+			try {
+				if(serviceChat[i].isOnline)
+					output.println(serviceChat[i].username);
+			} catch (Exception e) {
+			}
+
 		}
 	}
 }
