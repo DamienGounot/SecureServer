@@ -75,16 +75,24 @@ public class ClientChat extends Thread {
 			msg = buffer.readLine();
 
 		} catch (IOException e) {
-			output_client.println("[ERROR] I/O Exception");
+			output_client.println("[ERROR] getMessage()");
 		}
 		return msg;
 	}
 
 	private void send(String message){
-		output_server.println(message);
+		try {
+			output_server.println(message);
+		} catch (Exception e) {
+			output_client.println("[ERROR] send()");
+		}
 	}
 
 	private void receive(String message){
-		output_client.println(message);
+		try {
+			output_client.println(message);
+		} catch (Exception e) {
+			output_client.println("[ERROR] receive()");
+		}
 	}
 }
