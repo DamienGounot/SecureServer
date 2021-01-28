@@ -1,54 +1,83 @@
 import java.io.*;
 import java.net.*;
-import java.util.*;
 
-public class ServiceChat extends Thread {
+public class ClientChat extends Thread {
 
 	boolean debug = false;
-    boolean loop = true;
+	boolean loop = true;
 
 	Socket socket;
-	BufferedReader input_clavier;
-	PrintStream output_to_server;
+
+	BufferedReader input_client;
+	PrintStream output_client;
 
 	BufferedReader input_server;
-	PrintStream output_to_screen;
+	PrintStream output_server;
 
-	public ServiceChat(Socket socket) {
+	public static void main(String[] args) throws Exception{
+
+		Socket socket = new Socket("localhost",1234);
+		new ClientChat(socket);
+	}
+
+	public ClientChat(Socket socket) {
 		this.socket = socket;
-		this.start();
+		boolean noError = initStreams();
+
+		if (noError){
+			this.start();
+			read();
+		}
+
 	}
 
 	public void run() {
-		boolean noError = initStreams();
-		if (noError)
-			mainLoop();
+		listen();
 	}
 
-	private void mainLoop() {
+	private void listen() { // ecoute ce qui arrive du serveur
 		while (loop) {
+			String message = getMessage(input_server);
+			receive(message);
+			}
+	}
 
+	private void read() { // lit ce qui est saisi par le user
+		while (loop) {
+		String message = getMessage(input_client);
+		send(message);
 		}
 	}
-
-	private synchronized boolean initStreams() { // TODO
+	private synchronized boolean initStreams() {
 		try {
-			input = new BufferedReader(new InputStreamReader(System.in());
-			output = new PrintStream(socket.getOutputStream());
+			input_client = new BufferedReader(new InputStreamReader(System.in));
+			output_client = new PrintStream(System.out);
+			input_server = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			output_server = new PrintStream(socket.getOutputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
+			System.out.println("Error init Stream");
 			return false;
 		}
+		return true;
 	}
 
-	private String getMessage() {
+	private String getMessage(BufferedReader buffer) {
 		String msg = "";
 		try {
-			msg = input.readLine();
+			msg = buffer.readLine();
 
 		} catch (IOException e) {
-			output.println("[ERROR] I/O Exception");
+			output_client.println("[ERROR] I/O Exception");
 		}
 		return msg;
+	}
+
+	private void send(String message){
+		output_server.println(message);
+	}
+
+	private void receive(String message){
+		output_client.println(message);
 	}
 }
