@@ -39,6 +39,9 @@ public class ClientChat extends Thread {
 		while (loop) {
 			String message = getMessage(input_server);
 			receive(message);
+			if(message.startsWith("Server is full")){
+				System.exit(0);
+			}
 			}
 	}
 
@@ -46,6 +49,10 @@ public class ClientChat extends Thread {
 		while (loop) {
 		String message = getMessage(input_client);
 		send(message);
+		if(message.equals("/quit")){
+			output_client.println("Exiting system...");
+			System.exit(0);
+		}
 		}
 	}
 	private synchronized boolean initStreams() {
