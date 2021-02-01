@@ -39,8 +39,12 @@ public class ClientChat extends Thread {
 		while (loop) {
 			String message = getMessage(input_server);
 			receive(message);
-			if(message.startsWith("Server is full")){
-				System.exit(0);
+			try {
+				if(message.startsWith("Server is full")){
+					System.exit(0);
+				}
+			} catch (Exception e) {
+				output_client.println("Catch disconnect...");
 			}
 			}
 	}
