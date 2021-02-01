@@ -4,7 +4,7 @@ import java.util.*;
 
 public class ServiceChat extends Thread {
 
-	boolean debug = false;
+	boolean debug = true;
 
 	final static int NB_USERS_MAX = 3;
 	static int nb_users = 0;
@@ -59,7 +59,7 @@ public class ServiceChat extends Thread {
 			return false;
 		} else {
 
-			if(debug)output.println("DEBUG: ID output = "+nb_users);
+			if(debug)System.out.println("[DEBUG] ID = "+nb_users);
 			this.id_user = nb_users;
 			serviceChat[id_user] = this;
 			outputs[id_user] = output;
@@ -77,6 +77,7 @@ public class ServiceChat extends Thread {
 					broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 					this.isOnline = true;
 					userList();
+					if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);				
 					return true;
 				} else {
 					disconnect("error");
@@ -90,6 +91,7 @@ public class ServiceChat extends Thread {
 				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();
+				if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);
 			}
 
 			return true;
@@ -160,18 +162,18 @@ public class ServiceChat extends Thread {
 
 			outputs[id_user] = outputs[nb_users - 1];
 
-			if(debug)output.println("[DEBUG] outputs[" + id_user + "]= outputs[" + (nb_users - 1) + "]");
-			if(debug)output.println("[DEBUG] BEFORE UPDATE, UserID: " + serviceChat[(nb_users - 1)].id_user);
+			if(debug)System.out.println("[DEBUG] outputs[" + id_user + "]= outputs[" + (nb_users - 1) + "]");
+			if(debug)System.out.println("[DEBUG] BEFORE UPDATE, UserID: " + serviceChat[(nb_users - 1)].id_user);
 			
 			serviceChat[(nb_users - 1)].id_user = this.id_user;
 			
-			if(debug)output.println("[DEBUG] AFTER UPDATE, UserID: " + serviceChat[(nb_users - 1)].id_user);
+			if(debug)System.out.println("[DEBUG] AFTER UPDATE, UserID: " + serviceChat[(nb_users - 1)].id_user);
 			
 			serviceChat[this.id_user] = serviceChat[(nb_users-1)]; //le dernier servicechat devient celui qui se déco
 			
 			nb_users--;
 			
-			if(debug)output.println("[DEBUG] nbUser =" + nb_users);
+			if(debug)System.out.println("[DEBUG] nbUser =" + nb_users);
 				
 			
 				if(!flag.equals("error"))
@@ -205,7 +207,7 @@ public class ServiceChat extends Thread {
 		return -1;
 	}
 	private void send(int userID, String[] command){
-		outputs[userID].print("<" + this.username + "> ");
+		outputs[userID].print("[Private]<" + this.username + "> ");
 		for (int i = 2; i < command.length; i++) {
 			outputs[userID].print(command[i]+" ");
 		}

@@ -1,4 +1,6 @@
 #/bin/sh
 clear
-echo "Join Server @ localhost:1234..."
-telnet localhost 1234
+echo "Compilating Client java files..."
+javac ClientChat.java
+echo "Start Client..."
+java ClientChat
