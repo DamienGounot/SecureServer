@@ -37,10 +37,13 @@ public class TheClient {
 	private final static byte INS_RSA_ENC		           	= (byte)0x00;
 	private final static byte INS_RSA_DEC		           	= (byte)0x01;
 
+	private final static byte INS_RSA_ENCRYPT             = (byte)0xA0;
+	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
+
 
 	private PassThruCardService servClient = null;
 	final static boolean DISPLAYAPDUS = true;
-
+	boolean DISPLAY = true;
 
 	public static void main( String[] args ) throws InterruptedException {
 		new TheClient();
@@ -294,7 +297,8 @@ public class TheClient {
 
 		// Get challenge data (step 2)
 		final int DATASIZE = 128;				//128 to use with RSA1024_NO_PAD
-		Random r = new Random( (new Date()).getTime() );
+		//Random r = new Random( (new Date()).getTime() );
+		Random r = new Random((0));
 		BASE64Encoder encoder = new BASE64Encoder();
 		byte[] challengeBytes = new byte[DATASIZE];
 		r.nextBytes( challengeBytes );
@@ -304,18 +308,55 @@ public class TheClient {
 		cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
 		byte[] ciphered = new byte[DATASIZE];
 		System.out.println( "*" );
-		//cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
-		ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
+		cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
+		//ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
 		System.out.println( "*" );
 		System.out.println("ciphered by pc is:\n" + encoder.encode(ciphered) + "\n" );
 
+
+		// envoit du cipher vers la CaP (et reception du unciphered)
+		byte[] unciphered;
+		unciphered = cipherGeneric(INS_RSA_DECRYPT, ciphered);
+		System.out.println("unciphered by card is:\n" + encoder.encode(unciphered) + "\n" );
+
+		/*
 		// Decrypt with private key (step 4)
 		cRSA_NO_PAD.init( Cipher.DECRYPT_MODE, priv );
 		byte[] unciphered = new byte[DATASIZE];
 		cRSA_NO_PAD.doFinal( ciphered, 0, DATASIZE, unciphered, 0);
 		System.out.println("unciphered by pc is:\n" + encoder.encode(unciphered) + "\n" );
-
+		*/
 	}
+
+
+
+	
+	private byte[] cipherGeneric( byte typeINS, byte[] challenge ) {
+		byte[] result = new byte[challenge.length];
+
+		/* Forgage de la requete pour cippher/uncipher*/
+
+		byte[] header = {CLA_TEST,typeINS, 0x00,0x00};
+
+		byte[] optional = new byte[(2+challenge.length)];
+		optional[0] = (byte)challenge.length;
+		System.arraycopy(challenge, 0, optional, (byte)1,(short)((short)optional[0]&(short)255));
+		System.out.print("ici ca plante pas");
+		byte[] command = new byte[header.length + optional.length];
+		System.arraycopy(header, (byte)0, command, (byte)0, header.length);
+		System.arraycopy(optional, (byte)0, command,header.length, optional.length);
+
+		CommandAPDU cmd = new CommandAPDU( command);
+	//	displayAPDU(cmd);
+
+		/*end Requete*/
+
+		/* Reception et retour du cipher */
+		ResponseAPDU resp = this.sendAPDU( cmd, DISPLAY );
+		byte[] bytes = resp.getBytes();
+		System.arraycopy(bytes, 0, result, 0, (bytes.length-2));
+		return result;		
+    }
 
 
 }
