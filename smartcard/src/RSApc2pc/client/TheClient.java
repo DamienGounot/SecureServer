@@ -294,7 +294,8 @@ public class TheClient {
 
 		// Get challenge data (step 2)
 		final int DATASIZE = 128;				//128 to use with RSA1024_NO_PAD
-		Random r = new Random( (new Date()).getTime() );
+		//Random r = new Random( (new Date()).getTime() );
+		Random r = new Random((0));
 		BASE64Encoder encoder = new BASE64Encoder();
 		byte[] challengeBytes = new byte[DATASIZE];
 		r.nextBytes( challengeBytes );
