@@ -68,11 +68,14 @@ public class ServiceChat extends Thread {
 			output.println("MESSAGETYPE Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
 			output.println("MESSAGETYPE Enter your username: ");
 			this.username = getMessage();
+			this.username = this.username.split(" ")[1]; // pour garder uniquement le username (et pas le "MESSAGETYPE")
+			System.out.println("Username: <"+this.username+">");
 
 			if (usernameExist(this.username)) {
 				output.println("MESSAGETYPE Username '"+ this.username + "' was found !");
 				output.println("MESSAGETYPE Enter associated password...");
 				this.password = getMessage();
+				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
 				if (checkPassword(this.username, this.password)) {
 					broadCast("MESSAGETYPE [SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 					this.isOnline = true;
@@ -86,6 +89,8 @@ public class ServiceChat extends Thread {
 			} else {
 				output.println("MESSAGETYPE Enter your password: ");
 				this.password = getMessage();
+				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
+				System.out.println("Password: <"+this.password+">");
 				usernames.add(this.username);
 				passwords.add(this.password);
 				broadCast("MESSAGETYPE [SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
@@ -140,7 +145,7 @@ public class ServiceChat extends Thread {
 				}
 			}else{ // Sinon Broadcast le MESSAGETYPE
 				String toDisplay ="";
-				for(int i=2;i<command.length;i++){
+				for(int i=1;i<command.length;i++){
 					toDisplay+=command[i];
 					toDisplay+=" ";
 				}
@@ -148,7 +153,7 @@ public class ServiceChat extends Thread {
 			}
 
 		}else if(command[0].startsWith("FILETYPE")){
-			// ouverture de fichier et tout le bazard
+			//gerer si envoit d'un fichier en MP ou en broadcast
 			
 		}
 
@@ -206,7 +211,7 @@ public class ServiceChat extends Thread {
 			output.println("MESSAGETYPE User List: ");
 		for (int i=0; i<nb_users;i++) {
 			if(serviceChat[i].isOnline)
-				output.println(serviceChat[i].username);
+				output.println("MESSAGETYPE "+serviceChat[i].username);
 		}
 	}
 
@@ -219,7 +224,7 @@ public class ServiceChat extends Thread {
 		return -1;
 	}
 	private void send(int userID, String[] command){
-		outputs[userID].print("[Private]<" + this.username + "> ");
+		outputs[userID].print("MESSAGETYPE [Private]<" + this.username + "> ");
 		for (int i = 3; i < command.length; i++) {
 			outputs[userID].print(command[i]+" ");
 		}

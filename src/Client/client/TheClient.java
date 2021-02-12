@@ -495,7 +495,7 @@ public class TheClient extends Thread{
 				}	
 			}else if(message.startsWith("/send")){
 				StringTokenizer st = new StringTokenizer(message);
-				if(st.countTokens() == 3){
+				if(st.countTokens() >= 3){
 					String user = "";
 					String content = "";
 					for(int i=0;i<2;i++){
