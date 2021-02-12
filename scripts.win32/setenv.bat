@@ -1,4 +1,4 @@
-set PROJECT=RSApc2c
+set PROJECT=Client
 
 set DIR=..
 set OUT=%DIR%\out
