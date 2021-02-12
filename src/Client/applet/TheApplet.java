@@ -30,7 +30,8 @@ public class TheApplet extends Applet {
 	private short cipherRSAKeyLength;
 
 
-
+	private final static byte INS_DES_ECB_NOPAD_ENC           	= (byte)0x20;
+	private final static byte INS_DES_ECB_NOPAD_DEC           	= (byte)0x21;
 
 	// RSA Keys section
 

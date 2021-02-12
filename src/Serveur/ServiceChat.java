@@ -50,7 +50,7 @@ public class ServiceChat extends Thread {
 		}
 
 		if (nb_users == NB_USERS_MAX) {
-			output.println("Server is full (" +nb_users+"/"+NB_USERS_MAX+") , please try again later...");
+			output.println("MESSAGETYPE Server is full (" +nb_users+"/"+NB_USERS_MAX+") , please try again later...");
 			try {
 				socket.close();
 			} catch (IOException e) {
@@ -65,16 +65,16 @@ public class ServiceChat extends Thread {
 			outputs[id_user] = output;
 			nb_users++;
 
-			output.println("Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
-			output.println("Enter your username: ");
+			output.println("MESSAGETYPE Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
+			output.println("MESSAGETYPE Enter your username: ");
 			this.username = getMessage();
 
 			if (usernameExist(this.username)) {
-				output.println("Username '"+ this.username + "' was found !");
-				output.println("Enter associated password...");
+				output.println("MESSAGETYPE Username '"+ this.username + "' was found !");
+				output.println("MESSAGETYPE Enter associated password...");
 				this.password = getMessage();
 				if (checkPassword(this.username, this.password)) {
-					broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
+					broadCast("MESSAGETYPE [SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 					this.isOnline = true;
 					userList();
 					if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);				
@@ -84,11 +84,11 @@ public class ServiceChat extends Thread {
 					return false;
 				}
 			} else {
-				output.println("Enter your password: ");
+				output.println("MESSAGETYPE Enter your password: ");
 				this.password = getMessage();
 				usernames.add(this.username);
 				passwords.add(this.password);
-				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
+				broadCast("MESSAGETYPE [SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();
 				if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);
@@ -121,25 +121,37 @@ public class ServiceChat extends Thread {
 
 	private void analyseMessage(String msg) {
 		String[] command = msg.split(" ");
-		switch (command[0]) {
-			case "/quit":
-				disconnect("");
-				break;
-			case "/list":
-				userList();
-				break;
-			case "/send":
-				int userID = getUserID(command[1]);
+
+		if(command[0].equals("/quit")){
+			disconnect("");
+		}
+		else if(command[0].equals("/list")){
+			userList();
+		}
+		else if(command[0].startsWith("MESSAGETYPE")){
+
+			// Si MP
+			if(command[1].equals("/send")){
+				int userID = getUserID(command[2]);
 				if(userID == -1){
-					output.println("Error: The user '"+command[1]+"' does not exist or is not online !");
+					output.println("MESSAGETYPE Error: The user '"+command[2]+"' does not exist or is not online !");
 				}else{
 					send(userID, command);
 				}
-				
-				break;	
-			default:
-				broadCast("<" + this.username + "> " + msg);
+			}else{ // Sinon Broadcast le MESSAGETYPE
+				String toDisplay ="";
+				for(int i=2;i<command.length;i++){
+					toDisplay+=command[i];
+					toDisplay+=" ";
+				}
+				broadCast("MESSAGETYPE "+"<" + this.username + "> " + toDisplay);
+			}
+
+		}else if(command[0].startsWith("FILETYPE")){
+			// ouverture de fichier et tout le bazard
+			
 		}
+
 	}
 
 	private boolean usernameExist(String name) {
@@ -177,7 +189,7 @@ public class ServiceChat extends Thread {
 				
 			
 				if(!flag.equals("error"))
-					broadCast("[SYSTEM] " + username + " has left! (" +nb_users+"/"+NB_USERS_MAX+")");
+					broadCast("MESSAGETYPE [SYSTEM] " + username + " has left! (" +nb_users+"/"+NB_USERS_MAX+")");
 
 			
 			this.isOnline = false;
@@ -191,7 +203,7 @@ public class ServiceChat extends Thread {
 	}
 
 	private void userList(){
-			output.println("User List: ");
+			output.println("MESSAGETYPE User List: ");
 		for (int i=0; i<nb_users;i++) {
 			if(serviceChat[i].isOnline)
 				output.println(serviceChat[i].username);
@@ -208,7 +220,7 @@ public class ServiceChat extends Thread {
 	}
 	private void send(int userID, String[] command){
 		outputs[userID].print("[Private]<" + this.username + "> ");
-		for (int i = 2; i < command.length; i++) {
+		for (int i = 3; i < command.length; i++) {
 			outputs[userID].print(command[i]+" ");
 		}
 		outputs[userID].println();

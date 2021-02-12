@@ -22,6 +22,7 @@ import sun.misc.BASE64Encoder;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 
 
@@ -41,7 +42,6 @@ public class TheClient extends Thread{
 	private final static byte INS_RSA_ENCRYPT             = (byte)0xA0;
 	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
 
-
 	
 	private PassThruCardService servClient = null;
 	final static boolean DISPLAYAPDUS = true;
@@ -59,6 +59,10 @@ public class TheClient extends Thread{
 
 	BufferedReader input_server;
 	PrintStream output_server;
+
+	final static short CIPHER_MAXLENGTH = 240;
+
+	byte[] dataBlock = new byte[CIPHER_MAXLENGTH];
 
 	//------------------------------------------------------------------------------------
 	//----------------------------Main et Constructeur------------------------------------
@@ -367,8 +371,6 @@ public class TheClient extends Thread{
 		*/
 	}
 
-
-
 	
 	private byte[] cipherGeneric( byte typeINS, byte[] challenge ) {
 		byte[] result = new byte[challenge.length];
@@ -409,7 +411,7 @@ public class TheClient extends Thread{
 			String message = getMessage(input_server);
 			receive(message);
 			try {
-				if(message.startsWith("Server is full")){
+				if(message.startsWith("MESSAGETYPE Server is full")){
 					System.exit(0);
 				}
 			} catch (Exception e) {
@@ -420,12 +422,101 @@ public class TheClient extends Thread{
 
 	private void read() { // lit ce qui est saisi par le user
 		while (loop) {
-		String message = getMessage(input_client);
-		send(message);
-		if(message.equals("/quit")){
-			output_client.println("Exiting system...");
-			System.exit(0);
-		}
+			String message = getMessage(input_client);
+			String messageTransform = "";
+			
+			if(message.equals("/quit")){
+				send(message);
+				output_client.println("Exiting system...");
+				System.exit(0);
+			}else if(message.equals("/list")){
+				send(message);
+				output_client.println("Asking for online users list...");
+
+			}else if(message.startsWith("/sendFile")){
+					StringTokenizer st = new StringTokenizer(message);
+					if(st.countTokens() == 3){
+						String user = "";
+						String inputfilename = "";
+						for(int i=0;i<2;i++){
+							user = st.nextToken();
+						}
+						inputfilename = st.nextToken();
+						//output_client.println(inputfilename+" send to "+user);
+						
+					try{
+						DataInputStream filedata = new DataInputStream(new FileInputStream(inputfilename));
+					
+						int return_value = 0;
+						int blockNumber = 0;
+						byte[] cipherBlock;
+						while( (return_value = filedata.read(dataBlock,0,CIPHER_MAXLENGTH)) !=-1 ) {
+		
+							if(return_value == CIPHER_MAXLENGTH){
+								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, dataBlock);
+								
+							}else{
+		
+								 int paddingSize = (8-(return_value%8));
+								 byte[] finalData = new byte[return_value+paddingSize];
+								 
+								 byte[] finalPadding = new byte[paddingSize];
+								 for(int i =0; i < paddingSize ; i++){
+								 finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
+								 }
+		
+								 System.arraycopy(dataBlock, (byte)0, finalData, (byte)0, return_value);
+								 System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
+								//nb FinalData est mon bloc paddé non chiffré
+								
+								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+							}
+							blockNumber ++;
+							// send le bloc chiffré ici (cipherBlock)
+							// NB: pour l'instant on envoit en clair paddé
+							messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename;
+							send(messageTransform);
+							//output_client.println(messageTransform);
+							
+						}
+		
+					}catch(Exception e){
+						output_client.println("Error: error reading file or file does not exist");
+					}		
+					
+
+
+
+					
+				}else{
+					output_client.println("Error: Wrong number of argument, command is:");
+					output_client.println("/sendFile <user> <file>");
+					output_client.println("/sendFile ALL <file>");
+				}	
+			}else if(message.startsWith("/send")){
+				StringTokenizer st = new StringTokenizer(message);
+				if(st.countTokens() == 3){
+					String user = "";
+					String content = "";
+					for(int i=0;i<2;i++){
+						user = st.nextToken();
+					}
+					while(st.hasMoreTokens()){
+						content+=st.nextToken();
+					}
+					output_client.println(content+" send to "+user);
+					messageTransform = "MESSAGETYPE /send "+user+" "+content;
+					send(messageTransform);
+					//output_client.println(messageTransform);
+				}else{
+					output_client.println("Error: Wrong number of argument, command is: /send <user> <message>");
+				}
+
+			}else{
+				messageTransform = "MESSAGETYPE "+message;
+				send(messageTransform);
+				//output_client.println(messageTransform);
+			}
 		}
 	}
 
@@ -465,11 +556,22 @@ public class TheClient extends Thread{
 	}
 
 	private void receive(String message){
-		try {
-			output_client.println(message);
-		} catch (Exception e) {
-			output_client.println("[ERROR] receive()");
+		String[] command = message.split(" ");
+		String toDisplay ="";
+		if(command[0].equals("MESSAGETYPE")){
+			for(int i=1;i<command.length;i++){
+				toDisplay+=command[i];
+				toDisplay+=" ";
+			}
+			try {
+				output_client.println(toDisplay);
+			} catch (Exception e) {
+				output_client.println("[ERROR] receive()");
+			}
+		}else if(command[0].equals("FILETYPE")){
+			// ouverture de fichier et tout le bazard
 		}
+
 	}
 
 
