@@ -599,7 +599,11 @@ public class TheClient extends Thread{
 
 			if(blockNumber == 1){
 				try {
-					outputData = new DataOutputStream(new FileOutputStream("reception_"+filename));
+					Random r = new Random((0));
+					byte[] random = new byte[10];
+					r.nextBytes( random );
+					String randomStr = random.toString();
+					outputData = new DataOutputStream(new FileOutputStream(randomStr+"_"+filename));
 
 			   } catch (Exception e) {
 				   output_client.println("Erreur lors de la creation d'un fichier");

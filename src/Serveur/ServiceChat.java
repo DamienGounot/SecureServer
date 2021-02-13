@@ -125,7 +125,7 @@ public class ServiceChat extends Thread {
 	}
 
 	private void analyseMessage(String msg) {
-		System.out.println("Reception: <"+msg+">");
+		if(debug)System.out.println("Reception: <"+msg+">");
 		String[] command = msg.split(" ");
 
 		if(command[0].equals("/quit")){
@@ -156,7 +156,7 @@ public class ServiceChat extends Thread {
 		}else if(command[0].equals("FILETYPE")){
 			
 			if(command[1].equals("ALL")){ //Si user est "ALL" on Broadcast
-
+				broadCastFile(command);
 			}else{ // on récupère le userID et on lui envoit en MP
 				int userID = getUserID(command[1]);
 				if(userID == -1){
@@ -245,5 +245,15 @@ public class ServiceChat extends Thread {
 
 	private void sendFile(int userID,String[] command){
 		outputs[userID].println(command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]);
+	}
+
+	public synchronized void broadCastFile(String[] command) {
+		for (int i = 0; i < nb_users; i++) {
+			try {
+				outputs[i].println(command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]);
+			} catch (Exception e) {
+				continue;
+			}
+		}
 	}
 }
