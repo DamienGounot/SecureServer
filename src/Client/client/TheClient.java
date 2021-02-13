@@ -27,6 +27,7 @@ import java.util.*;
 
 
 
+
 public class TheClient extends Thread{
 
 
@@ -63,6 +64,7 @@ public class TheClient extends Thread{
 	final static short CIPHER_MAXLENGTH = 240;
 
 	byte[] dataBlock = new byte[CIPHER_MAXLENGTH];
+	byte[] receptionDataBlock = new byte[CIPHER_MAXLENGTH];
 
 	//------------------------------------------------------------------------------------
 	//----------------------------Main et Constructeur------------------------------------
@@ -433,7 +435,7 @@ public class TheClient extends Thread{
 				send(message);
 				output_client.println("Asking for online users list...");
 
-			}else if(message.startsWith("/sendFile")){
+			}else if(message.startsWith("/file ")){
 					StringTokenizer st = new StringTokenizer(message);
 					if(st.countTokens() == 3){
 						String user = "";
@@ -450,10 +452,12 @@ public class TheClient extends Thread{
 						int return_value = 0;
 						int blockNumber = 0;
 						byte[] cipherBlock;
+
 						while( (return_value = filedata.read(dataBlock,0,CIPHER_MAXLENGTH)) !=-1 ) {
 		
 							if(return_value == CIPHER_MAXLENGTH){
 								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, dataBlock);
+								cipherBlock = dataBlock;
 								
 							}else{
 		
@@ -470,13 +474,17 @@ public class TheClient extends Thread{
 								//nb FinalData est mon bloc paddé non chiffré
 								
 								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+								cipherBlock = finalData;
 							}
+							
 							blockNumber ++;
 							// send le bloc chiffré ici (cipherBlock)
 							// NB: pour l'instant on envoit en clair paddé
-							messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename;
+							sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+							String encodedString = encoder.encode(cipherBlock);
+							encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+							messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename+" "+encodedString;
 							send(messageTransform);
-							//output_client.println(messageTransform);
 							
 						}
 		
@@ -490,8 +498,8 @@ public class TheClient extends Thread{
 					
 				}else{
 					output_client.println("Error: Wrong number of argument, command is:");
-					output_client.println("/sendFile <user> <file>");
-					output_client.println("/sendFile ALL <file>");
+					output_client.println("/file <user> <file>");
+					output_client.println("/file ALL <file>");
 				}	
 			}else if(message.startsWith("/send")){
 				StringTokenizer st = new StringTokenizer(message);
@@ -558,6 +566,8 @@ public class TheClient extends Thread{
 	private void receive(String message){
 		String[] command = message.split(" ");
 		String toDisplay ="";
+		
+
 		if(command[0].equals("MESSAGETYPE")){
 			for(int i=1;i<command.length;i++){
 				toDisplay+=command[i];
@@ -569,7 +579,49 @@ public class TheClient extends Thread{
 				output_client.println("[ERROR] receive()");
 			}
 		}else if(command[0].equals("FILETYPE")){
-			// ouverture de fichier et tout le bazard
+
+			String sender = command[1];
+			int blockNumber = Integer.parseInt(command[2]);
+			String filename = command[3];
+			String stringFileData = command[4];
+			byte[] receptionDataBlock = stringFileData.getBytes();
+			byte[] response;
+			DataOutputStream  outputData = null;
+
+					try {
+						 outputData = new DataOutputStream(new FileOutputStream("reception_"+filename));
+
+					} catch (Exception e) {
+						output_client.println("Erreur lors de la creation d'un fichier");
+					}
+
+				if(outputData != null){
+					try{
+						int return_value = receptionDataBlock.length;
+
+	
+						if(return_value == CIPHER_MAXLENGTH){
+							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, cipherdataBlock);
+							response = receptionDataBlock;
+							outputData.write(response, 0, return_value);
+						}else{
+							// extration du bon bout
+							byte[] finalData = new byte[return_value];
+							System.arraycopy(receptionDataBlock, (byte)0, finalData, (byte)0, return_value);
+							// uncipher
+							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, finalData);
+							response = receptionDataBlock;
+							// retirer padding
+							int padding_extrait = (response[return_value-1]-48); //(-48 pour offset dans la table ASCII)
+							outputData.write(response, 0, return_value-padding_extrait);
+								
+						}					
+	
+				}catch(Exception e){
+					output_client.println("Erreur lors de la reception d'un block de fichier");
+				}
+			}
+				
 		}
 
 	}

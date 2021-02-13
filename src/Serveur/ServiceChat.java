@@ -125,6 +125,7 @@ public class ServiceChat extends Thread {
 	}
 
 	private void analyseMessage(String msg) {
+		System.out.println("Reception: <"+msg+">");
 		String[] command = msg.split(" ");
 
 		if(command[0].equals("/quit")){
@@ -133,7 +134,7 @@ public class ServiceChat extends Thread {
 		else if(command[0].equals("/list")){
 			userList();
 		}
-		else if(command[0].startsWith("MESSAGETYPE")){
+		else if(command[0].equals("MESSAGETYPE")){
 
 			// Si MP
 			if(command[1].equals("/send")){
@@ -152,8 +153,19 @@ public class ServiceChat extends Thread {
 				broadCast("MESSAGETYPE "+"<" + this.username + "> " + toDisplay);
 			}
 
-		}else if(command[0].startsWith("FILETYPE")){
-			//gerer si envoit d'un fichier en MP ou en broadcast
+		}else if(command[0].equals("FILETYPE")){
+			
+			if(command[1].equals("ALL")){ //Si user est "ALL" on Broadcast
+
+			}else{ // on récupère le userID et on lui envoit en MP
+				int userID = getUserID(command[1]);
+				if(userID == -1){
+					output.println("MESSAGETYPE Error: The user '"+command[2]+"' does not exist or is not online !");
+				}else{
+					sendFile(userID, command);
+					
+				}
+			}
 			
 		}
 
@@ -229,5 +241,9 @@ public class ServiceChat extends Thread {
 			outputs[userID].print(command[i]+" ");
 		}
 		outputs[userID].println();
+	}
+
+	private void sendFile(int userID,String[] command){
+		outputs[userID].println(command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]);
 	}
 }
