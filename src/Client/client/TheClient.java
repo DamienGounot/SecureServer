@@ -66,6 +66,8 @@ public class TheClient extends Thread{
 	byte[] dataBlock = new byte[CIPHER_MAXLENGTH];
 	byte[] receptionDataBlock = new byte[CIPHER_MAXLENGTH];
 
+	DataOutputStream  outputData = null;
+
 	//------------------------------------------------------------------------------------
 	//----------------------------Main et Constructeur------------------------------------
 
@@ -580,28 +582,37 @@ public class TheClient extends Thread{
 			}
 		}else if(command[0].equals("FILETYPE")){
 
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			
 			String sender = command[1];
 			int blockNumber = Integer.parseInt(command[2]);
 			String filename = command[3];
 			String stringFileData = command[4];
-			byte[] receptionDataBlock = stringFileData.getBytes();
+			byte[] receptionDataBlock = null;
+			try {
+				receptionDataBlock = decoder.decodeBuffer(stringFileData);
+			} catch (Exception e) {
+				output_client.println("Erreur decodage base64");
+			}
+			
 			byte[] response;
-			DataOutputStream  outputData = null;
 
-					try {
-						 outputData = new DataOutputStream(new FileOutputStream("reception_"+filename));
+			if(blockNumber == 1){
+				try {
+					outputData = new DataOutputStream(new FileOutputStream("reception_"+filename));
 
-					} catch (Exception e) {
-						output_client.println("Erreur lors de la creation d'un fichier");
-					}
+			   } catch (Exception e) {
+				   output_client.println("Erreur lors de la creation d'un fichier");
+			   }
+			}
 
-				if(outputData != null){
 					try{
 						int return_value = receptionDataBlock.length;
 
 	
 						if(return_value == CIPHER_MAXLENGTH){
 							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, cipherdataBlock);
+							
 							response = receptionDataBlock;
 							outputData.write(response, 0, return_value);
 						}else{
@@ -620,9 +631,10 @@ public class TheClient extends Thread{
 				}catch(Exception e){
 					output_client.println("Erreur lors de la reception d'un block de fichier");
 				}
-			}
+
 				
 		}
+
 
 	}
 
