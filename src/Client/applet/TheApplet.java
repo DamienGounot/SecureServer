@@ -19,19 +19,28 @@ public class TheApplet extends Applet {
 	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
 	private final static byte INS_GET_PUBLIC_RSA_KEY      = (byte)0xFE;
 	private final static byte INS_PUT_PUBLIC_RSA_KEY      = (byte)0xF4;
+	private final static byte INS_DES_ECB_NOPAD_ENC           	= (byte)0x20;
+	private final static byte INS_DES_ECB_NOPAD_DEC           	= (byte)0x21;
+
+
+	static final byte[] theDESKey = 
+	new byte[] { (byte)0xCA, (byte)0xCA, (byte)0xCA, (byte)0xCA, (byte)0xCA, (byte)0xCA, (byte)0xCA, (byte)0xCA };
+
 
 	// cipher instances
-	private Cipher cRSA_NO_PAD_DEC,cRSA_NO_PAD_ENC,cRSA_NO_PAD;
+	private Cipher cRSA_NO_PAD_DEC,cRSA_NO_PAD_ENC,cRSA_NO_PAD,cDES_ECB_NOPAD_enc, cDES_ECB_NOPAD_dec;
 	// key objects
 	private KeyPair keyPair;
-	private Key publicRSAKey, privateRSAKey;
+	private Key publicRSAKey, privateRSAKey,secretDESKey, secretDES2Key, secretDES3Key;
+	    
+
+	boolean 
+	pseudoRandom, secureRandom,
+	SHA1, MD5, RIPEMD160,
+	keyDES, DES_ECB_NOPAD, DES_CBC_NOPAD;
 
 	// cipher key length
 	private short cipherRSAKeyLength;
-
-
-	private final static byte INS_DES_ECB_NOPAD_ENC           	= (byte)0x20;
-	private final static byte INS_DES_ECB_NOPAD_DEC           	= (byte)0x21;
 
 	// RSA Keys section
 
@@ -205,9 +214,40 @@ public class TheApplet extends Applet {
 		cRSA_NO_PAD_DEC = Cipher.getInstance((byte)0x0C, false );
 		cRSA_NO_PAD_ENC.init(publicRSAKey, Cipher.MODE_ENCRYPT);
 		cRSA_NO_PAD_DEC.init(privateRSAKey, Cipher.MODE_DECRYPT );
+
+
+		initKeyDES(); 
+	    initDES_ECB_NOPAD(); 
+
+
 		register();
 
 	}
+
+
+
+	private void initKeyDES() {
+	    try {
+		    secretDESKey = KeyBuilder.buildKey(KeyBuilder.TYPE_DES, KeyBuilder.LENGTH_DES, false);
+		    ((DESKey)secretDESKey).setKey(theDESKey,(short)0);
+		    keyDES = true;
+	    } catch( Exception e ) {
+		    keyDES = false;
+	    }
+    }
+
+
+    private void initDES_ECB_NOPAD() {
+	    if( keyDES ) try {
+		    cDES_ECB_NOPAD_enc = Cipher.getInstance(Cipher.ALG_DES_ECB_NOPAD, false);
+		    cDES_ECB_NOPAD_dec = Cipher.getInstance(Cipher.ALG_DES_ECB_NOPAD, false);
+		    cDES_ECB_NOPAD_enc.init( secretDESKey, Cipher.MODE_ENCRYPT );
+		    cDES_ECB_NOPAD_dec.init( secretDESKey, Cipher.MODE_DECRYPT );
+		    DES_ECB_NOPAD = true;
+	    } catch( Exception e ) {
+		    DES_ECB_NOPAD = false;
+	    }
+    }
 
 
 	public static void install(byte[] bArray, short bOffset, byte bLength) throws ISOException {
@@ -228,12 +268,10 @@ public class TheApplet extends Applet {
 			case INS_GENERATE_RSA_KEY: generateRSAKey(); break;
 		//	case INS_RSA_ENCRYPT: RSAEncrypt(apdu); break;
 		//	case INS_RSA_DECRYPT: RSADecrypt(apdu); break;
-			case INS_RSA_ENCRYPT: 
-				cipherGeneric( apdu, cRSA_NO_PAD_ENC);
-				break;
-			case INS_RSA_DECRYPT: 
-				cipherGeneric( apdu, cRSA_NO_PAD_DEC); 
-				break;
+			case INS_RSA_ENCRYPT: cipherGeneric( apdu, cRSA_NO_PAD_ENC); break;
+			case INS_RSA_DECRYPT: cipherGeneric( apdu, cRSA_NO_PAD_DEC); break;
+			case INS_DES_ECB_NOPAD_ENC: cipherGeneric( apdu, cDES_ECB_NOPAD_enc); break;
+			case INS_DES_ECB_NOPAD_DEC: cipherGeneric( apdu, cDES_ECB_NOPAD_dec); break;
 			// case INS_GET_PUBLIC_RSA_KEY: getPublicRSAKey(apdu); break;
 			// case INS_PUT_PUBLIC_RSA_KEY: putPublicRSAKey(apdu); break;
 			default: ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
