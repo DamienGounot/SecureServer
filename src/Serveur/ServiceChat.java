@@ -220,7 +220,7 @@ public class ServiceChat extends Thread {
 			output.println("[SYSTEM] User List: ");
 		for (int i=0; i<nb_users;i++) {
 			if(serviceChat[i].isOnline)
-				output.println("[SYSTEM] User: "+serviceChat[i].username);
+				output.println("[SYSTEM] : "+serviceChat[i].username);
 		}
 	}
 
@@ -238,12 +238,14 @@ public class ServiceChat extends Thread {
 	}
 
 	private void sendFile(int userID,String[] command){
+		System.out.println("En sortie de serveur: <"+command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]+">");
 		outputs[userID].println(command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]);
 	}
 
 	public synchronized void broadCastFile(String[] command) {
 		for (int i = 0; i < nb_users; i++) {
 			try {
+				System.out.println("En sortie de serveur: <"+command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]+">");
 				outputs[i].println(command[0]+" "+command[1]+" "+command[2]+" "+command[3]+" "+command[4]);
 			} catch (Exception e) {
 				continue;
