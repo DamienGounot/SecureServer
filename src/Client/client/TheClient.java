@@ -33,13 +33,10 @@ public class TheClient extends Thread{
 
 
 	private final static byte CLA_TEST                    		= (byte)0x90;
-	private final static byte INS_TESTDES_ECB_NOPAD_ENC       	= (byte)0x28;
-	private final static byte INS_TESTDES_ECB_NOPAD_DEC       	= (byte)0x29;
 	private final static byte INS_DES_ECB_NOPAD_ENC           	= (byte)0x20;
 	private final static byte INS_DES_ECB_NOPAD_DEC           	= (byte)0x21;
 	private final static byte INS_RSA_ENC		           	= (byte)0x00;
 	private final static byte INS_RSA_DEC		           	= (byte)0x01;
-
 	private final static byte INS_RSA_ENCRYPT             = (byte)0xA0;
 	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
 
@@ -67,6 +64,7 @@ public class TheClient extends Thread{
 	byte[] receptionDataBlock = new byte[CIPHER_MAXLENGTH];
 
 	DataOutputStream  outputData = null;
+	String randomStrfilename = "";
 
 	//------------------------------------------------------------------------------------
 	//----------------------------Main et Constructeur------------------------------------
@@ -95,8 +93,9 @@ public class TheClient extends Thread{
 				System.out.println ("got a SmartCard object!\n");
 			} else
 				System.out.println( "did not get a SmartCard object!\n" );
-			initNewCard( sm ); 
-			SmartCard.shutdown();
+			initNewCard( sm );
+			SmartCard.shutdown(); 
+			
 		} catch( Exception e ) {
 			System.out.println( "TheClient error: " + e.getMessage() );
 		}
@@ -108,6 +107,7 @@ public class TheClient extends Thread{
 			this.start();
 			read();
 		}
+
 	}
 
 	public void run() {
@@ -219,23 +219,6 @@ public class TheClient extends Thread{
 
 
 	/************************************************/
-
-
-	private void testProcessingDES( byte typeINS ) {
-		byte[] headers = { 0, typeINS, 0, 0 };
-		byte[] apdu = new byte[headers.length+0];
-		System.arraycopy( headers, 0, apdu, 0, headers.length );
-		sendAPDU(new CommandAPDU( apdu ));
-	} 
-
-
-	private void testDES( boolean displayAPDUs ) { 
-		System.out.println( "**TESTING DES_CARD**");
-		testProcessingDES(INS_TESTDES_ECB_NOPAD_ENC);
-		testProcessingDES(INS_TESTDES_ECB_NOPAD_DEC);
-		System.out.println( "**TESTING DES_CARD**");
-	}
-
 
 	private byte[] processingDES( byte typeINS, byte[] challenge ) {
 		byte[] result = new byte[challenge.length];
@@ -386,7 +369,6 @@ public class TheClient extends Thread{
 		byte[] optional = new byte[(2+challenge.length)];
 		optional[0] = (byte)challenge.length;
 		System.arraycopy(challenge, 0, optional, (byte)1,(short)((short)optional[0]&(short)255));
-		System.out.print("ici ca plante pas");
 		byte[] command = new byte[header.length + optional.length];
 		System.arraycopy(header, (byte)0, command, (byte)0, header.length);
 		System.arraycopy(optional, (byte)0, command,header.length, optional.length);
@@ -432,6 +414,11 @@ public class TheClient extends Thread{
 			if(message.equals("/quit")){
 				send(message);
 				output_client.println("Exiting system...");
+				try {
+					//SmartCard.shutdown();
+				} catch (Exception e) {
+					output_client.println("Exiting SmartCard...");
+				}
 				System.exit(0);
 			}else if(message.equals("/list")){
 				send(message);
@@ -598,16 +585,11 @@ public class TheClient extends Thread{
 			byte[] response;
 
 			if(blockNumber == 1){
-				try {
+
 					Random r = new Random((0));
 					byte[] random = new byte[10];
 					r.nextBytes( random );
-					String randomStr = random.toString();
-					outputData = new DataOutputStream(new FileOutputStream(randomStr+"_"+filename));
-
-			   } catch (Exception e) {
-				   output_client.println("Erreur lors de la creation d'un fichier");
-			   }
+					randomStrfilename = random.toString();
 			}
 
 					try{
@@ -618,7 +600,9 @@ public class TheClient extends Thread{
 							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, cipherdataBlock);
 							
 							response = receptionDataBlock;
+							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
 							outputData.write(response, 0, return_value);
+							outputData.close();
 						}else{
 							// extration du bon bout
 							byte[] finalData = new byte[return_value];
@@ -628,15 +612,16 @@ public class TheClient extends Thread{
 							response = receptionDataBlock;
 							// retirer padding
 							int padding_extrait = (response[return_value-1]-48); //(-48 pour offset dans la table ASCII)
+							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
 							outputData.write(response, 0, return_value-padding_extrait);
-								
+							outputData.close();						
 						}					
 	
 				}catch(Exception e){
 					output_client.println("Erreur lors de la reception d'un block de fichier");
 				}
 
-				
+			
 		}
 
 
