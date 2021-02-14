@@ -94,7 +94,7 @@ public class TheClient extends Thread{
 			} else
 				System.out.println( "did not get a SmartCard object!\n" );
 			initNewCard( sm );
-			SmartCard.shutdown(); 
+			//SmartCard.shutdown(); 
 			
 		} catch( Exception e ) {
 			System.out.println( "TheClient error: " + e.getMessage() );
@@ -415,7 +415,7 @@ public class TheClient extends Thread{
 				send(message);
 				output_client.println("Exiting system...");
 				try {
-					//SmartCard.shutdown();
+					SmartCard.shutdown();
 				} catch (Exception e) {
 					output_client.println("Exiting SmartCard...");
 				}
@@ -445,8 +445,8 @@ public class TheClient extends Thread{
 						while( (return_value = filedata.read(dataBlock,0,CIPHER_MAXLENGTH)) !=-1 ) {
 		
 							if(return_value == CIPHER_MAXLENGTH){
-								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, dataBlock);
-								cipherBlock = dataBlock;
+								cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, dataBlock);
+								//cipherBlock = dataBlock;
 								
 							}else{
 		
@@ -462,13 +462,13 @@ public class TheClient extends Thread{
 								 System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
 								//nb FinalData est mon bloc paddé non chiffré
 								
-								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
-								cipherBlock = finalData;
+								cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+								//cipherBlock = finalData;
 							}
 							
 							blockNumber ++;
-							// send le bloc chiffré ici (cipherBlock)
-							// NB: pour l'instant on envoit en clair paddé
+							// send le bloc paddé chiffré ici (cipherBlock)
+
 							sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
 							String encodedString = encoder.encode(cipherBlock);
 							encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
@@ -597,9 +597,8 @@ public class TheClient extends Thread{
 
 	
 						if(return_value == CIPHER_MAXLENGTH){
-							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, cipherdataBlock);
-							
-							response = receptionDataBlock;
+							response = cipherGeneric(INS_DES_ECB_NOPAD_DEC, receptionDataBlock);
+							//response = receptionDataBlock;
 							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
 							outputData.write(response, 0, return_value);
 							outputData.close();
@@ -608,8 +607,8 @@ public class TheClient extends Thread{
 							byte[] finalData = new byte[return_value];
 							System.arraycopy(receptionDataBlock, (byte)0, finalData, (byte)0, return_value);
 							// uncipher
-							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, finalData);
-							response = receptionDataBlock;
+							response = cipherGeneric(INS_DES_ECB_NOPAD_DEC, finalData);
+							//response = receptionDataBlock;
 							// retirer padding
 							int padding_extrait = (response[return_value-1]-48); //(-48 pour offset dans la table ASCII)
 							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
