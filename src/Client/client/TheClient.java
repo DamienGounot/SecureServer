@@ -58,6 +58,8 @@ public class TheClient extends Thread{
 	BufferedReader input_server;
 	PrintStream output_server;
 
+	String randomStrfilename = "";
+
 	final static short CIPHER_MAXLENGTH = 240;
 
 	//------------------------------------------------------------------------------------
@@ -674,7 +676,6 @@ public class TheClient extends Thread{
 
 			}
 
-		
 
 		}else if(command[0].equals("FILETYPE")){
 
@@ -685,28 +686,32 @@ public class TheClient extends Thread{
 			String filename = command[3];
 			String stringFileData = command[4];
 			byte[] receptionFileDataBlock = null;
-			DataOutputStream receivedFile = null;
-			String randomStrfilename = "";
+			DataOutputStream receivedFile;
+			
+			byte[] response;
+			int return_value = 0;
+			Boolean decode = false;
 
 			try {
 				receptionFileDataBlock = decoder.decodeBuffer(stringFileData);
+				decode = true;
 			} catch (Exception e) {
 				output_client.println("Erreur decodage base64");
 			}
 			
-			byte[] response;
+			
 
 			if(blockNumber == 1){
 
 					Random r = new Random((0));
-					byte[] random = new byte[10];
+					byte[] random = new byte[32];
 					r.nextBytes( random );
 					
 					randomStrfilename = random.toString();
 			}
 
 					try{
-						int return_value = receptionFileDataBlock.length;
+						return_value = receptionFileDataBlock.length;
 
 	
 						if(return_value == CIPHER_MAXLENGTH){
@@ -732,7 +737,7 @@ public class TheClient extends Thread{
 				}catch(Exception e){
 					output_client.println("Erreur lors de la reception d'un block de fichier");
 				}
-
+				
 			
 		}else if(command[0].equals("[SYSTEM]")){
 			// si system, on display tel quel
