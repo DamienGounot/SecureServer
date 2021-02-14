@@ -22,6 +22,8 @@ import sun.misc.BASE64Encoder;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
+
 
 
 
@@ -31,16 +33,12 @@ public class TheClient extends Thread{
 
 
 	private final static byte CLA_TEST                    		= (byte)0x90;
-	private final static byte INS_TESTDES_ECB_NOPAD_ENC       	= (byte)0x28;
-	private final static byte INS_TESTDES_ECB_NOPAD_DEC       	= (byte)0x29;
 	private final static byte INS_DES_ECB_NOPAD_ENC           	= (byte)0x20;
 	private final static byte INS_DES_ECB_NOPAD_DEC           	= (byte)0x21;
 	private final static byte INS_RSA_ENC		           	= (byte)0x00;
 	private final static byte INS_RSA_DEC		           	= (byte)0x01;
-
 	private final static byte INS_RSA_ENCRYPT             = (byte)0xA0;
 	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
-
 
 	
 	private PassThruCardService servClient = null;
@@ -59,6 +57,14 @@ public class TheClient extends Thread{
 
 	BufferedReader input_server;
 	PrintStream output_server;
+
+	final static short CIPHER_MAXLENGTH = 240;
+
+	byte[] dataBlock = new byte[CIPHER_MAXLENGTH];
+	byte[] receptionDataBlock = new byte[CIPHER_MAXLENGTH];
+
+	DataOutputStream  outputData = null;
+	String randomStrfilename = "";
 
 	//------------------------------------------------------------------------------------
 	//----------------------------Main et Constructeur------------------------------------
@@ -87,8 +93,9 @@ public class TheClient extends Thread{
 				System.out.println ("got a SmartCard object!\n");
 			} else
 				System.out.println( "did not get a SmartCard object!\n" );
-			initNewCard( sm ); 
-			SmartCard.shutdown();
+			initNewCard( sm );
+			SmartCard.shutdown(); 
+			
 		} catch( Exception e ) {
 			System.out.println( "TheClient error: " + e.getMessage() );
 		}
@@ -100,6 +107,7 @@ public class TheClient extends Thread{
 			this.start();
 			read();
 		}
+
 	}
 
 	public void run() {
@@ -211,23 +219,6 @@ public class TheClient extends Thread{
 
 
 	/************************************************/
-
-
-	private void testProcessingDES( byte typeINS ) {
-		byte[] headers = { 0, typeINS, 0, 0 };
-		byte[] apdu = new byte[headers.length+0];
-		System.arraycopy( headers, 0, apdu, 0, headers.length );
-		sendAPDU(new CommandAPDU( apdu ));
-	} 
-
-
-	private void testDES( boolean displayAPDUs ) { 
-		System.out.println( "**TESTING DES_CARD**");
-		testProcessingDES(INS_TESTDES_ECB_NOPAD_ENC);
-		testProcessingDES(INS_TESTDES_ECB_NOPAD_DEC);
-		System.out.println( "**TESTING DES_CARD**");
-	}
-
 
 	private byte[] processingDES( byte typeINS, byte[] challenge ) {
 		byte[] result = new byte[challenge.length];
@@ -367,8 +358,6 @@ public class TheClient extends Thread{
 		*/
 	}
 
-
-
 	
 	private byte[] cipherGeneric( byte typeINS, byte[] challenge ) {
 		byte[] result = new byte[challenge.length];
@@ -380,7 +369,6 @@ public class TheClient extends Thread{
 		byte[] optional = new byte[(2+challenge.length)];
 		optional[0] = (byte)challenge.length;
 		System.arraycopy(challenge, 0, optional, (byte)1,(short)((short)optional[0]&(short)255));
-		System.out.print("ici ca plante pas");
 		byte[] command = new byte[header.length + optional.length];
 		System.arraycopy(header, (byte)0, command, (byte)0, header.length);
 		System.arraycopy(optional, (byte)0, command,header.length, optional.length);
@@ -409,7 +397,7 @@ public class TheClient extends Thread{
 			String message = getMessage(input_server);
 			receive(message);
 			try {
-				if(message.startsWith("Server is full")){
+				if(message.startsWith("MESSAGETYPE Server is full")){
 					System.exit(0);
 				}
 			} catch (Exception e) {
@@ -420,12 +408,112 @@ public class TheClient extends Thread{
 
 	private void read() { // lit ce qui est saisi par le user
 		while (loop) {
-		String message = getMessage(input_client);
-		send(message);
-		if(message.equals("/quit")){
-			output_client.println("Exiting system...");
-			System.exit(0);
-		}
+			String message = getMessage(input_client);
+			String messageTransform = "";
+			
+			if(message.equals("/quit")){
+				send(message);
+				output_client.println("Exiting system...");
+				try {
+					//SmartCard.shutdown();
+				} catch (Exception e) {
+					output_client.println("Exiting SmartCard...");
+				}
+				System.exit(0);
+			}else if(message.equals("/list")){
+				send(message);
+				output_client.println("Asking for online users list...");
+
+			}else if(message.startsWith("/file ")){
+					StringTokenizer st = new StringTokenizer(message);
+					if(st.countTokens() == 3){
+						String user = "";
+						String inputfilename = "";
+						for(int i=0;i<2;i++){
+							user = st.nextToken();
+						}
+						inputfilename = st.nextToken();
+						//output_client.println(inputfilename+" send to "+user);
+						
+					try{
+						DataInputStream filedata = new DataInputStream(new FileInputStream(inputfilename));
+					
+						int return_value = 0;
+						int blockNumber = 0;
+						byte[] cipherBlock;
+
+						while( (return_value = filedata.read(dataBlock,0,CIPHER_MAXLENGTH)) !=-1 ) {
+		
+							if(return_value == CIPHER_MAXLENGTH){
+								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, dataBlock);
+								cipherBlock = dataBlock;
+								
+							}else{
+		
+								 int paddingSize = (8-(return_value%8));
+								 byte[] finalData = new byte[return_value+paddingSize];
+								 
+								 byte[] finalPadding = new byte[paddingSize];
+								 for(int i =0; i < paddingSize ; i++){
+								 finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
+								 }
+		
+								 System.arraycopy(dataBlock, (byte)0, finalData, (byte)0, return_value);
+								 System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
+								//nb FinalData est mon bloc paddé non chiffré
+								
+								//cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+								cipherBlock = finalData;
+							}
+							
+							blockNumber ++;
+							// send le bloc chiffré ici (cipherBlock)
+							// NB: pour l'instant on envoit en clair paddé
+							sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+							String encodedString = encoder.encode(cipherBlock);
+							encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+							messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename+" "+encodedString;
+							send(messageTransform);
+							
+						}
+		
+					}catch(Exception e){
+						output_client.println("Error: error reading file or file does not exist");
+					}		
+					
+
+
+
+					
+				}else{
+					output_client.println("Error: Wrong number of argument, command is:");
+					output_client.println("/file <user> <file>");
+					output_client.println("/file ALL <file>");
+				}	
+			}else if(message.startsWith("/send")){
+				StringTokenizer st = new StringTokenizer(message);
+				if(st.countTokens() >= 3){
+					String user = "";
+					String content = "";
+					for(int i=0;i<2;i++){
+						user = st.nextToken();
+					}
+					while(st.hasMoreTokens()){
+						content+=st.nextToken();
+					}
+					output_client.println(content+" send to "+user);
+					messageTransform = "MESSAGETYPE /send "+user+" "+content;
+					send(messageTransform);
+					//output_client.println(messageTransform);
+				}else{
+					output_client.println("Error: Wrong number of argument, command is: /send <user> <message>");
+				}
+
+			}else{
+				messageTransform = "MESSAGETYPE "+message;
+				send(messageTransform);
+				//output_client.println(messageTransform);
+			}
 		}
 	}
 
@@ -465,11 +553,78 @@ public class TheClient extends Thread{
 	}
 
 	private void receive(String message){
-		try {
-			output_client.println(message);
-		} catch (Exception e) {
-			output_client.println("[ERROR] receive()");
+		String[] command = message.split(" ");
+		String toDisplay ="";
+		
+
+		if(command[0].equals("MESSAGETYPE")){
+			for(int i=1;i<command.length;i++){
+				toDisplay+=command[i];
+				toDisplay+=" ";
+			}
+			try {
+				output_client.println(toDisplay);
+			} catch (Exception e) {
+				output_client.println("[ERROR] receive()");
+			}
+		}else if(command[0].equals("FILETYPE")){
+
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			
+			String sender = command[1];
+			int blockNumber = Integer.parseInt(command[2]);
+			String filename = command[3];
+			String stringFileData = command[4];
+			byte[] receptionDataBlock = null;
+			try {
+				receptionDataBlock = decoder.decodeBuffer(stringFileData);
+			} catch (Exception e) {
+				output_client.println("Erreur decodage base64");
+			}
+			
+			byte[] response;
+
+			if(blockNumber == 1){
+
+					Random r = new Random((0));
+					byte[] random = new byte[10];
+					r.nextBytes( random );
+					randomStrfilename = random.toString();
+			}
+
+					try{
+						int return_value = receptionDataBlock.length;
+
+	
+						if(return_value == CIPHER_MAXLENGTH){
+							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, cipherdataBlock);
+							
+							response = receptionDataBlock;
+							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
+							outputData.write(response, 0, return_value);
+							outputData.close();
+						}else{
+							// extration du bon bout
+							byte[] finalData = new byte[return_value];
+							System.arraycopy(receptionDataBlock, (byte)0, finalData, (byte)0, return_value);
+							// uncipher
+							//response = cipherGeneric(UNCIPHERFILEBYCARD,INS_DES_ECB_NOPAD_DEC, finalData);
+							response = receptionDataBlock;
+							// retirer padding
+							int padding_extrait = (response[return_value-1]-48); //(-48 pour offset dans la table ASCII)
+							outputData = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
+							outputData.write(response, 0, return_value-padding_extrait);
+							outputData.close();						
+						}					
+	
+				}catch(Exception e){
+					output_client.println("Erreur lors de la reception d'un block de fichier");
+				}
+
+			
 		}
+
+
 	}
 
 

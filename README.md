@@ -1,2 +1,2 @@
 # SecureServer
-Multi threaded server with high authentification using smatcard and cipher communication using DES
+Multi threaded server with high authentification using RSA and cipher communication using DES with Smartcard
