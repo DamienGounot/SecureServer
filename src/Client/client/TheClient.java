@@ -40,10 +40,10 @@ public class TheClient extends Thread{
 	private final static byte INS_RSA_ENCRYPT             = (byte)0xA0;
 	private final static byte INS_RSA_DECRYPT             = (byte)0xA2;
 
-	
+	private final static byte INS_GET_PUBLIC_RSA_KEY      = (byte)0xFE;
 	private PassThruCardService servClient = null;
 	final static boolean DISPLAYAPDUS = true;
-	boolean DISPLAY = false;
+	boolean DISPLAY = true;
 
 	// ----------------------------------------------------------
 
@@ -99,6 +99,7 @@ public class TheClient extends Thread{
 
 		this.socket = socket;
 		boolean noError = initStreams();
+
 
 		
 		if (noError){
@@ -388,14 +389,37 @@ public class TheClient extends Thread{
 	//---------------------------------------------------------------------------------------------------
 	//------------------------- Partie Client "pure"-----------------------------------------------------
 
+	private byte[] getModulus(){
+		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x00,0x00};
+		CommandAPDU cmd = new CommandAPDU( apdu );
+		ResponseAPDU resp = sendAPDU( cmd, false );
+		byte[] modulus = resp.getBytes();
+		return modulus;
+	}
+	
+	private byte[] getExponent(){
+		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x01,0x00};
+		CommandAPDU cmd = new CommandAPDU( apdu );
+		ResponseAPDU resp = sendAPDU( cmd, false );
+		byte[] exponent = resp.getBytes();
+		return exponent;
+	}
+
+	// NB: cote client, on recupere modulus et exposant de la carte, puis on peut creer notre obj RSAPrivate;
+	// On send au serveur le modulus et l'exposant au serveur ---> lui permet de creer l'objet RSApubKey 
+	// le serveur genere un challenge qu'il peut chiffrer avec la pubKey
+	// cote client on peut Decrypt avec l'apdu , puis renvoyer au serveur le déchiffrer
+	// ---> match on est login en tant que le user et on stock le couple <user/PubKey>
+
 	private void help(){
 		output_client.println("========== Help ==========");
-		output_client.println("Send private message :");
-		output_client.println("Send private file :");
-		output_client.println("Broadcast file :");
-		output_client.println("Display user list :");
-		output_client.println("Display help :");
-		output_client.println("Disconnect :");
+		output_client.println("Send private message : /send <user> <message>");
+		output_client.println("Send private file : /file <user> <filename>");
+		output_client.println("Broadcast file : /file ALL <filename>");
+		output_client.println("Broadcast message : <message>");
+		output_client.println("Display user list : /list");
+		output_client.println("Display help : /help");
+		output_client.println("Disconnect : /quit");
 		output_client.println("==========================");
 	}
 
@@ -421,6 +445,7 @@ public class TheClient extends Thread{
 	}
 
 	private void read() { // lit ce qui est saisi par le user
+		
 		while (loop) {
 					String message = getMessage(input_client);
 					String messageTransform = "";

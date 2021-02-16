@@ -12,6 +12,8 @@ public class ServiceChat extends Thread {
 	static ArrayList<String> usernames = new ArrayList<String>();
 	static ArrayList<String> passwords = new ArrayList<String>();
 	static ServiceChat[] serviceChat = new ServiceChat[NB_USERS_MAX];
+	static Map<String, String> userRSApubExposant = new HashMap<String, String>();
+	static Map<String, String> userRSApubModulus = new HashMap<String, String>();
 	
 	Socket socket;
 	BufferedReader input;

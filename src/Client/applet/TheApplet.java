@@ -272,7 +272,7 @@ public class TheApplet extends Applet {
 			case INS_RSA_DECRYPT: cipherGeneric( apdu, cRSA_NO_PAD_DEC); break;
 			case INS_DES_ECB_NOPAD_ENC: cipherGeneric( apdu, cDES_ECB_NOPAD_enc); break;
 			case INS_DES_ECB_NOPAD_DEC: cipherGeneric( apdu, cDES_ECB_NOPAD_dec); break;
-			// case INS_GET_PUBLIC_RSA_KEY: getPublicRSAKey(apdu); break;
+			case INS_GET_PUBLIC_RSA_KEY: getPublicRSAKey(apdu); break;
 			// case INS_PUT_PUBLIC_RSA_KEY: putPublicRSAKey(apdu); break;
 			default: ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
 		}
@@ -315,23 +315,23 @@ public class TheApplet extends Applet {
 	// }
 
 
-	// void getPublicRSAKey(APDU apdu) {
-	// 	byte[] buffer = apdu.getBuffer();
-	// 	// get the element type and length
-	// 	byte keyElement = (byte)(buffer[ISO7816.OFFSET_P2] & 0xFF);
-	// 	// check correct type (modulus or exponent)
-	// 	if((keyElement != 0x00) && (keyElement != 0x01))
-	// 		ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
-	// 	// check elements request
-	// 	if(keyElement == 0) {
-	// 		// retrieve modulus
-	// 		buffer[0] = (byte)((RSAPublicKey)publicRSAKey).getModulus(buffer, (short)1);
-	// 	} else
-	// 		// retrieve exponent
-	// 		buffer[0] = (byte)((RSAPublicKey)publicRSAKey).getExponent(buffer, (short)1);
-	// 	// send the key element
-	// 	apdu.setOutgoingAndSend((short)0, (short)((buffer[0] & 0xFF) + 1));
-	// }
+	void getPublicRSAKey(APDU apdu) {
+		byte[] buffer = apdu.getBuffer();
+		// get the element type and length
+		byte keyElement = (byte)(buffer[ISO7816.OFFSET_P2] & 0xFF);
+		// check correct type (modulus or exponent)
+		if((keyElement != 0x00) && (keyElement != 0x01))
+			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+		// check elements request
+		if(keyElement == 0) {
+			// retrieve modulus
+			buffer[0] = (byte)((RSAPublicKey)publicRSAKey).getModulus(buffer, (short)1);
+		} else
+			// retrieve exponent
+			buffer[0] = (byte)((RSAPublicKey)publicRSAKey).getExponent(buffer, (short)1);
+		// send the key element
+		apdu.setOutgoingAndSend((short)0, (short)((buffer[0] & 0xFF) + 1));
+	}
 
 
 	// void putPublicRSAKey(APDU apdu) {
