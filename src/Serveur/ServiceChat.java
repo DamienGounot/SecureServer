@@ -160,7 +160,7 @@ public class ServiceChat extends Thread {
 			}else{ // on récupère le userID et on lui envoit en MP
 				int userID = getUserID(command[1]);
 				if(userID == -1){
-					output.println("[SYSTEM] Error: The user '"+command[2]+"' does not exist or is not online !");
+					output.println("[SYSTEM] Error: The user '"+command[1]+"' does not exist or is not online !");
 				}else{
 					sendFile(userID, command);
 					

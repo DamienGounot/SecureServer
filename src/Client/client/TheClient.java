@@ -388,7 +388,16 @@ public class TheClient extends Thread{
 	//---------------------------------------------------------------------------------------------------
 	//------------------------- Partie Client "pure"-----------------------------------------------------
 
-
+	private void help(){
+		output_client.println("========== Help ==========");
+		output_client.println("Send private message :");
+		output_client.println("Send private file :");
+		output_client.println("Broadcast file :");
+		output_client.println("Display user list :");
+		output_client.println("Display help :");
+		output_client.println("Disconnect :");
+		output_client.println("==========================");
+	}
 
 	private void listen() { // ecoute ce qui arrive du serveur
 		while (loop) {
@@ -418,6 +427,33 @@ public class TheClient extends Thread{
 					
 					if(!isLogged){
 
+							if(message.startsWith("/login ")){ 
+
+							StringTokenizer st = new StringTokenizer(message);
+							if(st.countTokens() == 3){
+									send(message);
+							}else{
+								output_client.println("Error: Wrong number of argument, command is: /login <username> <password>");
+							}
+
+						}else if(message.equals("/quit")){
+							send(message);
+							output_client.println("Exiting system...");
+							try {
+								SmartCard.shutdown();
+							} catch (Exception e) {
+								output_client.println("Exiting SmartCard...");
+							}
+							System.exit(0);
+
+						}else if(message.equals("/help")){
+							help();
+						}else{
+							output_client.println("You should log in first !");
+						}
+
+					}else{	// Si user est log
+
 						if(message.equals("/quit")){
 							send(message);
 							output_client.println("Exiting system...");
@@ -428,19 +464,9 @@ public class TheClient extends Thread{
 							}
 							System.exit(0);
 
-						}else if(message.startsWith("/login ")){ 
-
-							StringTokenizer st = new StringTokenizer(message);
-							if(st.countTokens() == 3){
-									send(message);
-							}else{
-								output_client.println("Error: Wrong number of argument, command is: /login <username> <message>");
-							}
-
-						}
-
-					}else{								// Si user est log
-						if(message.equals("/list")){
+						}else if(message.equals("/help")){
+							help();
+						}else if(message.equals("/list")){
 							send(message);
 							output_client.println("Asking for online users list...");
 	
