@@ -22,6 +22,8 @@ public class ServiceChat extends Thread {
 	int id_user;
 	boolean loop = true;
 
+	String loginRequest = "";
+
 	public ServiceChat(Socket socket) {
 		this.socket = socket;
 		this.start();
@@ -34,6 +36,8 @@ public class ServiceChat extends Thread {
 	}
 
 	private void mainLoop() {
+
+
 		while (loop) {
 			String message = getMessage();
 			analyseMessage(message);
@@ -66,33 +70,32 @@ public class ServiceChat extends Thread {
 			nb_users++;
 
 			output.println("[SYSTEM] Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
-			output.println("[SYSTEM] Enter your username: ");
-			this.username = getMessage();
-			this.username = this.username.split(" ")[1]; // pour garder uniquement le username (et pas le "MESSAGETYPE")
+			output.println("[SYSTEM] use /login <username> <password> to connect: ");
+			loginRequest = getMessage();
+			System.out.println("login request: "+loginRequest+">");
+			this.username = loginRequest.split(" ")[1]; // pour garder uniquement le username
 			System.out.println("Username: <"+this.username+">");
+			this.password = loginRequest.split(" ")[2]; // pour garder uniquement le password
+			System.out.println("password: <"+this.password+">");
 
 			if (usernameExist(this.username)) {
-				output.println("[SYSTEM] Username '"+ this.username + "' was found !");
-				output.println("[SYSTEM] Enter associated password...");
-				this.password = getMessage();
-				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
+				output.println("[SYSTEM] Username '"+ this.username + "' was found !");	
 				if (checkPassword(this.username, this.password)) {
+					output.println("[SYSTEM] Successfull login !");
 					broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 					this.isOnline = true;
 					userList();
 					if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);				
 					return true;
 				} else {
+					output.println("[SYSTEM] Credentials are not valid !");
 					disconnect("error");
 					return false;
 				}
 			} else {
-				output.println("[SYSTEM] Enter your password: ");
-				this.password = getMessage();
-				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
-				System.out.println("Password: <"+this.password+">");
 				usernames.add(this.username);
 				passwords.add(this.password);
+				output.println("[SYSTEM] Successfull login (user added) !");
 				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();

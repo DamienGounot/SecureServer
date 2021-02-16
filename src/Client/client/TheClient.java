@@ -49,7 +49,7 @@ public class TheClient extends Thread{
 
 	boolean debug = false;
 	boolean loop = true;
-
+	boolean isLogged = false;
 	Socket socket;
 
 	BufferedReader input_client;
@@ -99,6 +99,8 @@ public class TheClient extends Thread{
 
 		this.socket = socket;
 		boolean noError = initStreams();
+
+		
 		if (noError){
 			this.start();
 			read();
@@ -395,10 +397,17 @@ public class TheClient extends Thread{
 			try {
 				if(message.startsWith("[SYSTEM] Server is full")){
 					System.exit(0);
+				}else if(message.startsWith("[SYSTEM] Credentials are not valid !")){
+					System.exit(0);
 				}
 			} catch (Exception e) {
 				output_client.println("Catch disconnect...");
 			}
+
+			if(message.startsWith("[SYSTEM] Successfull login")){
+				this.isLogged = true;
+			}
+
 			}
 	}
 
@@ -407,195 +416,216 @@ public class TheClient extends Thread{
 					String message = getMessage(input_client);
 					String messageTransform = "";
 					
-					if(message.equals("/quit")){
-						send(message);
-						output_client.println("Exiting system...");
-						try {
-							SmartCard.shutdown();
-						} catch (Exception e) {
-							output_client.println("Exiting SmartCard...");
-						}
-						System.exit(0);
-					}else if(message.equals("/list")){
-						send(message);
-						output_client.println("Asking for online users list...");
+					if(!isLogged){
 
-					}else if(message.startsWith("/file ")){
+						if(message.equals("/quit")){
+							send(message);
+							output_client.println("Exiting system...");
+							try {
+								SmartCard.shutdown();
+							} catch (Exception e) {
+								output_client.println("Exiting SmartCard...");
+							}
+							System.exit(0);
 
-							DataInputStream file = null;
-							Boolean fileExist = false;
-							
+						}else if(message.startsWith("/login ")){ 
+
 							StringTokenizer st = new StringTokenizer(message);
 							if(st.countTokens() == 3){
-								String user = "";
-								String inputfilename = "";
-								for(int i=0;i<2;i++){
-									user = st.nextToken();
-								}
-								inputfilename = st.nextToken();
-								
-								
-								try{
-									file = new DataInputStream(new FileInputStream(inputfilename));
-									fileExist = true;
-									output_client.println("Sending "+inputfilename+" to "+user+" ...");
-								}catch(Exception e){
-									output_client.println("Error: error file does not exist");
-								}
+									send(message);
+							}else{
+								output_client.println("Error: Wrong number of argument, command is: /login <username> <message>");
+							}
 
-
-								if(fileExist){
-									try{
-									
-										int return_value = 0;
-										int blockNumber = 0;
-										byte[] cipherBlock;
-										byte[] blockFileDataToSend = new byte[CIPHER_MAXLENGTH];
-
-										while( (return_value = file.read(blockFileDataToSend)) !=-1 ) {
-
-											if(return_value == CIPHER_MAXLENGTH){
-												cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, blockFileDataToSend);
-												
-											}else{
-						
-												 int paddingSize = (8-(return_value%8));
-												 byte[] finalData = new byte[return_value+paddingSize];
-												 
-												 byte[] finalPadding = new byte[paddingSize];
-												 for(int i =0; i < paddingSize ; i++){
-												 finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
-												 }
-						
-												 System.arraycopy(blockFileDataToSend, (byte)0, finalData, (byte)0, return_value);
-												 System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
-												//nb FinalData est mon bloc paddé non chiffré
-												
-												cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
-											}
-											
-											blockNumber ++;
-											// send le bloc paddé chiffré ici (cipherBlock)
-				
-											sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
-											String encodedString = encoder.encode(cipherBlock);
-											encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-											messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename+" "+encodedString;
-											send(messageTransform);
-											
-										}
-										file.close();
-						
-									}catch(Exception e){
-										output_client.println("Error: while reading file (for sending)");
-										//e.printStackTrace();
-									}
-
-								}
-
-							
-						}else{
-							output_client.println("Error: Wrong number of argument, command is:");
-							output_client.println("/file <user> <file>");
-							output_client.println("/file ALL <file>");
-						}	
-					}else if(message.startsWith("/send")){
-									StringTokenizer st = new StringTokenizer(message);
-									if(st.countTokens() >= 3){
-										String user = "";
-										String content = "";
-										for(int i=0;i<2;i++){
-											user = st.nextToken();
-										}
-										while(st.hasMoreTokens()){
-										content+=st.nextToken();
-										content+=" ";
-									}
-									content = content.trim();
-
-
-									//cipher here 
-									int return_value = 0;
-									byte[] msgCipherBlock;
-									byte[] msgDataBlock = new byte[CIPHER_MAXLENGTH];
-									return_value = content.length();
-
-									if(return_value == CIPHER_MAXLENGTH){
-										msgDataBlock = content.getBytes();
-										msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, msgDataBlock);					
-										}else{
-											msgDataBlock = content.getBytes();
-										int paddingSize = (8-(return_value%8));
-										byte[] finalData = new byte[return_value+paddingSize];
-										
-										byte[] finalPadding = new byte[paddingSize];
-										for(int i =0; i < paddingSize ; i++){
-										finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
-										}
-
-										System.arraycopy(msgDataBlock, (byte)0, finalData, (byte)0, return_value);
-										System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
-										//nb FinalData est mon bloc paddé non chiffré
-										
-										msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
-									}
-
-									sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
-									String encodedString = encoder.encode(msgCipherBlock);
-									encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-
-										messageTransform = "MESSAGETYPE /send "+user+" "+encodedString;
-										send(messageTransform);
-								}else{
-									output_client.println("Error: Wrong number of argument, command is: /send <user> <message>");
-								}
-
-						}else{ // si Broadcast d'un MESSAGETYPE
-
-								StringTokenizer st = new StringTokenizer(message);
-									String content = "";
-									while(st.hasMoreTokens()){
-										content+=st.nextToken();
-										content+=" ";
-									}
-									content = content.trim();
-
-								int return_value = 0;
-								byte[] msgCipherBlock;
-								byte[] msgDataBlock = new byte[CIPHER_MAXLENGTH];
-
-
-								return_value = content.length();
-
-								if(return_value == CIPHER_MAXLENGTH){
-									msgDataBlock = content.getBytes();
-									msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, msgDataBlock);					
-								}else{
-									msgDataBlock = content.getBytes();
-									int paddingSize = (8-(return_value%8));
-									byte[] finalData = new byte[return_value+paddingSize];
-									
-									byte[] finalPadding = new byte[paddingSize];
-									for(int i =0; i < paddingSize ; i++){
-									finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
-									}
-
-									System.arraycopy(msgDataBlock, (byte)0, finalData, (byte)0, return_value);
-									System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
-									//nb FinalData est mon bloc paddé non chiffré
-									
-									msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
-									//cipherBlock = finalData;
-								}
-
-								sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
-								String encodedString = encoder.encode(msgCipherBlock);
-								encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-
-								messageTransform = "MESSAGETYPE "+encodedString;
-								send(messageTransform);
-								//output_client.println(messageTransform);
 						}
+
+					}else{								// Si user est log
+						if(message.equals("/list")){
+							send(message);
+							output_client.println("Asking for online users list...");
+	
+						}else if(message.startsWith("/file ")){
+	
+								DataInputStream file = null;
+								Boolean fileExist = false;
+								
+								StringTokenizer st = new StringTokenizer(message);
+								if(st.countTokens() == 3){
+									String user = "";
+									String inputfilename = "";
+									for(int i=0;i<2;i++){
+										user = st.nextToken();
+									}
+									inputfilename = st.nextToken();
+									
+									
+									try{
+										file = new DataInputStream(new FileInputStream(inputfilename));
+										fileExist = true;
+										output_client.println("Sending "+inputfilename+" to "+user+" ...");
+									}catch(Exception e){
+										output_client.println("Error: error file does not exist");
+									}
+	
+	
+									if(fileExist){
+										try{
+										
+											int return_value = 0;
+											int blockNumber = 0;
+											byte[] cipherBlock;
+											byte[] blockFileDataToSend = new byte[CIPHER_MAXLENGTH];
+	
+											while( (return_value = file.read(blockFileDataToSend)) !=-1 ) {
+	
+												if(return_value == CIPHER_MAXLENGTH){
+													cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, blockFileDataToSend);
+													
+												}else{
+							
+													 int paddingSize = (8-(return_value%8));
+													 byte[] finalData = new byte[return_value+paddingSize];
+													 
+													 byte[] finalPadding = new byte[paddingSize];
+													 for(int i =0; i < paddingSize ; i++){
+													 finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
+													 }
+							
+													 System.arraycopy(blockFileDataToSend, (byte)0, finalData, (byte)0, return_value);
+													 System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
+													//nb FinalData est mon bloc paddé non chiffré
+													
+													cipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+												}
+												
+												blockNumber ++;
+												// send le bloc paddé chiffré ici (cipherBlock)
+					
+												sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+												String encodedString = encoder.encode(cipherBlock);
+												encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+												messageTransform = "FILETYPE "+user+" "+blockNumber+" "+inputfilename+" "+encodedString;
+												send(messageTransform);
+												
+											}
+											file.close();
+							
+										}catch(Exception e){
+											output_client.println("Error: while reading file (for sending)");
+											//e.printStackTrace();
+										}
+	
+									}
+	
+								
+							}else{
+								output_client.println("Error: Wrong number of argument, command is:");
+								output_client.println("/file <user> <file>");
+								output_client.println("/file ALL <file>");
+							}	
+						}else if(message.startsWith("/send")){
+										StringTokenizer st = new StringTokenizer(message);
+										if(st.countTokens() >= 3){
+											String user = "";
+											String content = "";
+											for(int i=0;i<2;i++){
+												user = st.nextToken();
+											}
+											while(st.hasMoreTokens()){
+											content+=st.nextToken();
+											content+=" ";
+										}
+										content = content.trim();
+	
+	
+										//cipher here 
+										int return_value = 0;
+										byte[] msgCipherBlock;
+										byte[] msgDataBlock = new byte[CIPHER_MAXLENGTH];
+										return_value = content.length();
+	
+										if(return_value == CIPHER_MAXLENGTH){
+											msgDataBlock = content.getBytes();
+											msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, msgDataBlock);					
+											}else{
+												msgDataBlock = content.getBytes();
+											int paddingSize = (8-(return_value%8));
+											byte[] finalData = new byte[return_value+paddingSize];
+											
+											byte[] finalPadding = new byte[paddingSize];
+											for(int i =0; i < paddingSize ; i++){
+											finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
+											}
+	
+											System.arraycopy(msgDataBlock, (byte)0, finalData, (byte)0, return_value);
+											System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
+											//nb FinalData est mon bloc paddé non chiffré
+											
+											msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+										}
+	
+										sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+										String encodedString = encoder.encode(msgCipherBlock);
+										encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+	
+											messageTransform = "MESSAGETYPE /send "+user+" "+encodedString;
+											send(messageTransform);
+									}else{
+										output_client.println("Error: Wrong number of argument, command is: /send <user> <message>");
+									}
+	
+							}else{// si Broadcast d'un MESSAGETYPE
+	
+								StringTokenizer st = new StringTokenizer(message);
+								String content = "";
+								while(st.hasMoreTokens()){
+									content+=st.nextToken();
+									content+=" ";
+								}
+								content = content.trim();
+	
+							int return_value = 0;
+							byte[] msgCipherBlock;
+							byte[] msgDataBlock = new byte[CIPHER_MAXLENGTH];
+	
+	
+							return_value = content.length();
+	
+							if(return_value == CIPHER_MAXLENGTH){
+								msgDataBlock = content.getBytes();
+								msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, msgDataBlock);					
+							}else{
+								msgDataBlock = content.getBytes();
+								int paddingSize = (8-(return_value%8));
+								byte[] finalData = new byte[return_value+paddingSize];
+								
+								byte[] finalPadding = new byte[paddingSize];
+								for(int i =0; i < paddingSize ; i++){
+								finalPadding[i]= (byte)(paddingSize+48); //(+48 pour offset dans la table ASCII)
+								}
+	
+								System.arraycopy(msgDataBlock, (byte)0, finalData, (byte)0, return_value);
+								System.arraycopy(finalPadding, (byte)0, finalData,return_value,paddingSize);
+								//nb FinalData est mon bloc paddé non chiffré
+								
+								msgCipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_ENC, finalData);
+								//cipherBlock = finalData;
+							}
+	
+							sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+							String encodedString = encoder.encode(msgCipherBlock);
+							encodedString = encodedString.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+	
+							messageTransform = "MESSAGETYPE "+encodedString;
+							send(messageTransform);
+							//output_client.println(messageTransform);
+							}
+					}
+
+					
+					
+					
+					
 			}
 	}
 
