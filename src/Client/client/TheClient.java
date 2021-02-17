@@ -112,8 +112,7 @@ public class TheClient extends Thread{
 				this.pub_s = initExposant();
 				this.mod_s = initModulus();
 				this.pubRSAkey = createRSAKey(this.pub_s,this.mod_s);
-				output_client.println("Pub:"+pub_s);
-				output_client.println("Mod:"+mod_s);
+				
 			} catch( Exception e ) {
 			System.out.println( "Erreur lors de la conversion des exposants: " + e );
 			}
@@ -268,40 +267,6 @@ public class TheClient extends Thread{
 		return pub;
 	}
 
-			/*
-		// How to crypt and uncrypt using RSA_NOPAD: 4 Steps
-
-		// Get Cipher able to apply RSA_NOPAD (step 1)
-		// (must use "Bouncy Castle" crypto provider)
-		Security.addProvider(new BouncyCastleProvider());
-		Cipher cRSA_NO_PAD = Cipher.getInstance( "RSA/NONE/NoPadding", "BC" );
-
-		// Crypt with public key (step 3)
-		cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
-		byte[] ciphered = new byte[DATASIZE];
-		System.out.println( "*" );
-		cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
-		//ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
-		System.out.println( "*" );
-		System.out.println("ciphered by pc is:\n" + encoder.encode(ciphered) + "\n" );
-
-
-		// envoit du cipher vers la CaP (et reception du unciphered)
-		byte[] unciphered;
-		unciphered = cipherGeneric(INS_RSA_DECRYPT, ciphered);
-		System.out.println("unciphered by card is:\n" + encoder.encode(unciphered) + "\n" );
-
-		
-		// Decrypt with private key (step 4)
-		cRSA_NO_PAD.init( Cipher.DECRYPT_MODE, priv );
-		byte[] unciphered = new byte[DATASIZE];
-		cRSA_NO_PAD.doFinal( ciphered, 0, DATASIZE, unciphered, 0);
-		System.out.println("unciphered by pc is:\n" + encoder.encode(unciphered) + "\n" );
-		
-
-		*/
-
-
 	private byte[] cipherGeneric( byte typeINS, byte[] challenge ) {
 		byte[] result = new byte[challenge.length];
 
@@ -334,10 +299,13 @@ public class TheClient extends Thread{
 	//------------------------- Partie Client "pure"-----------------------------------------------------
 
 	private byte[] getModulus(){
+		
 		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x00,0x00};
 		CommandAPDU cmd = new CommandAPDU( apdu );
 		ResponseAPDU resp = sendAPDU( cmd, false );
-		byte[] modulus = resp.getBytes();
+		byte[] response = resp.getBytes();
+		byte[] modulus = new byte[response.length-3];
+		System.arraycopy(response, 1, modulus, 0,(response.length-3));
 		return modulus;
 	}
 	
@@ -345,7 +313,9 @@ public class TheClient extends Thread{
 		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x01,0x00};
 		CommandAPDU cmd = new CommandAPDU( apdu );
 		ResponseAPDU resp = sendAPDU( cmd, false );
-		byte[] exponent = resp.getBytes();
+		byte[] response = resp.getBytes();
+		byte[] exponent = new byte[response.length-3];
+		System.arraycopy(response, 1, exponent, 0,(response.length-3));
 		return exponent;
 	}
 

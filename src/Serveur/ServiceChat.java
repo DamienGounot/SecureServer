@@ -88,13 +88,13 @@ public class ServiceChat extends Thread {
 			output.println("[SYSTEM] Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
 			output.println("[SYSTEM] use /login <username> to connect: ");
 			loginRequest = getMessage();
-			System.out.println("login request: "+loginRequest+">");
+			//System.out.println("login request: "+loginRequest+">");
 			this.username = loginRequest.split(" ")[1]; // pour garder uniquement le username
-			System.out.println("Username: <"+this.username+">");
+			//System.out.println("Username: <"+this.username+">");
 			this.Base64_exposant = loginRequest.split(" ")[2]; // pour garder uniquement le base64 de l'exposant
-			System.out.println("Exposent: <"+this.Base64_exposant+">");
+			//System.out.println("Exposent: <"+this.Base64_exposant+">");
 			this.Base64_modulus = loginRequest.split(" ")[3]; // pour garder uniquement le base64 du modulus
-			System.out.println("Modulus: <"+this.Base64_modulus+">");
+			//System.out.println("Modulus: <"+this.Base64_modulus+">");
 			try {
 				this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
 			} catch (Exception e) {
@@ -121,6 +121,8 @@ public class ServiceChat extends Thread {
 				usernames.add(this.username);
 				rsaPubKeys.add(this.pubRSAkey);
 				output.println("[SYSTEM] Successfull login (user added) !");
+				System.out.print("Username: "+this.username);
+				System.out.print("RSA: "+this.pubRSAkey.toString());
 				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();
@@ -351,8 +353,8 @@ public class ServiceChat extends Thread {
 
 		String mod_s = new String(b_mod_s);
 		String pub_s = new String(b_pub_s);
-		System.out.println("Mod: <"+mod_s+">");
-		System.out.println("Pub: <"+pub_s+">");
+		//System.out.println("Mod: <"+mod_s+">");
+		//System.out.println("Pub: <"+pub_s+">");
 
 		// Load the keys from String into BigIntegers (step 3)
 		BigInteger modulus = new BigInteger(mod_s, 16);
