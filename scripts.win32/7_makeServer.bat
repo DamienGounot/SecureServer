@@ -15,11 +15,10 @@ set CLASSES=%CLASSES%;%MISC%\bcprov-jdk15on-150.jar
 IF NOT EXIST %OUT%\%PROJECT% MD %OUT%\%PROJECT% 
 
 echo Compilation...
-%JAVA_HOME%\bin\javac.exe -classpath %CLASSES% -g -d %OUT%\%PROJECT% %SRC%\%SERVEUR%\%CHATSERVEUR%.java
-%JAVA_HOME%\bin\javac.exe -classpath %CLASSES% -g -d %OUT%\%PROJECT% %SRC%\%SERVEUR%\%SERVICECHAT%.java
+%JAVA_HOME%\bin\javac.exe -classpath %CLASSES% -g -d %OUT%\%SERVEUR% %SRC%\%SERVEUR%\*.java
+
 if errorlevel 1 goto error
-echo %SERVICECHAT%.class compiled: OK
-echo %CHATSERVEUR%.class compiled: OK
+echo *.class compiled: OK
 echo .
 
 goto end

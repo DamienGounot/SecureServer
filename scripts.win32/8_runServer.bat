@@ -1,4 +1,4 @@
 @echo on
 
-cd C:\Users\user\Desktop\SecureServer\src\Serveur
+cd C:\Users\user\Desktop\SecureServer\out\Serveur
 java ChatServer
