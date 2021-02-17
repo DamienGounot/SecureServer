@@ -1,4 +1,6 @@
 set PROJECT=Client
+set SERVEUR=Serveur
+
 
 set DIR=..
 set OUT=%DIR%\out
@@ -21,6 +23,8 @@ set JC22_EXP=%JC22_HOME%\api_export_files
 
 set JC_EXP=%JC21_EXP%
 
+set SERVICECHAT=ServiceChat
+set CHATSERVEUR=ChatServer
 set PKGCLIENT=client
 set CLIENT=TheClient
 set PKGAPPLET=applet
