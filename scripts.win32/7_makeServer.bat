@@ -12,7 +12,7 @@ rem bouncy castle (crypto provider)
 set CLASSES=%CLASSES%;%MISC%\bcprov-jdk15on-150.jar
 
 
-IF NOT EXIST %OUT%\%PROJECT% MD %OUT%\%PROJECT% 
+IF NOT EXIST %OUT%\%SERVEUR% MD %OUT%\%SERVEUR% 
 
 echo Compilation...
 %JAVA_HOME%\bin\javac.exe -classpath %CLASSES% -g -d %OUT%\%SERVEUR% %SRC%\%SERVEUR%\*.java
@@ -31,5 +31,4 @@ pause
 goto end
 
 :end
-pause
 cls
