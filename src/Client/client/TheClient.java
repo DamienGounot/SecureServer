@@ -356,10 +356,27 @@ public class TheClient extends Thread{
 		String encodedExponent = encoder.encode(this.pub_s.getBytes());
 		encodedExponent = encodedExponent.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
 		String messageTransform = request + " " + encodedExponent + " " + encodedModulus;
-		send(messageTransform);	
+		send(messageTransform);
 
-		//NB: On receptionne le cipheredChallenge a partir d'ici
+		//NB: On receptionne le cipheredChallenge en base64 a partir d'ici
+		String Base_64cipheredChallenge = getMessage(input_server);
 
+		byte[] cipheredChallenge = null;
+		byte[] unciphered = null;
+		try {
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			cipheredChallenge = decoder.decodeBuffer(Base_64cipheredChallenge);
+		} catch (Exception e) {
+			output_client.println("Erreur decodage base64");
+		}
+		
+		// envoit du cipher vers la CaP (et reception du unciphered)
+		unciphered = cipherGeneric(INS_RSA_DECRYPT, cipheredChallenge);
+
+		//envoit du unciphered
+		String encodedUnciphered = encoder.encode(unciphered);
+		encodedUnciphered = encodedUnciphered.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+		send(encodedUnciphered);
 	}
 
 	// NB: cote client, on recupere modulus et exposant de la carte;
