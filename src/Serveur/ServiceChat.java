@@ -209,10 +209,12 @@ public class ServiceChat extends Thread {
 			}
 		}
 
-		String cipheredChallenge = genChallenge(pubKey); 
-		output.println(cipheredChallenge);
+		String Base64cipheredChallenge = genBase64CipherChallenge(pubKey);
+		
+		output.println(Base64cipheredChallenge);
 		// receive uncipher
 		String Base64Uncipher = getMessage();
+		System.out.println("Reception of Base64 uncipher is: <"+new String(Base64Uncipher)+">");
 		byte[] uncipher = null;
 		try {
 			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
@@ -220,6 +222,8 @@ public class ServiceChat extends Thread {
 		} catch (Exception e) {
 			output.println("Erreur decodage base64");
 		}
+
+		System.out.println("Raw Challenge is: <"+new String(uncipher)+">");
 
 		// si uncipher == challenge ---> return true
 		if(uncipher.equals(this.challengeBytes)) {
@@ -229,15 +233,17 @@ public class ServiceChat extends Thread {
 		return false;
 	}
 
-	private String genChallenge(PublicKey pubKey){
+	private String genBase64CipherChallenge(PublicKey pubKey){
 		
 		Random r = new Random((0));
 		BASE64Encoder encoder = new BASE64Encoder();
 		r.nextBytes( challengeBytes );
+		System.out.println("Raw Challenge is: <"+new String(challengeBytes)+">");
 		byte[] cipher = cipher(challengeBytes,pubKey);
+		System.out.println("Cipher Challenge is: <"+new String(cipher)+">");
 		String encodedCipher = encoder.encode(cipher);
 		encodedCipher = encodedCipher.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-		System.out.println("ciphered by serv (confirm) is:\n" + encodedCipher + "\n" );
+		System.out.println("Base64 Cipher Challenge is: <"+new String(encodedCipher)+">");
 		return encodedCipher;
 	}
 
@@ -253,6 +259,7 @@ public class ServiceChat extends Thread {
 			cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
 		} catch (Exception e) {
 			System.out.println("[Error] cipher serveur side");
+			e.printStackTrace();
 		}
 		//ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
 		return ciphered;
@@ -344,6 +351,8 @@ public class ServiceChat extends Thread {
 
 		String mod_s = new String(b_mod_s);
 		String pub_s = new String(b_pub_s);
+		System.out.println("Mod: <"+mod_s+">");
+		System.out.println("Pub: <"+pub_s+">");
 
 		// Load the keys from String into BigIntegers (step 3)
 		BigInteger modulus = new BigInteger(mod_s, 16);

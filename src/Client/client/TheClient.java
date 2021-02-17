@@ -358,25 +358,31 @@ public class TheClient extends Thread{
 		String messageTransform = request + " " + encodedExponent + " " + encodedModulus;
 		send(messageTransform);
 
-		//NB: On receptionne le cipheredChallenge en base64 a partir d'ici
 		String Base_64cipheredChallenge = getMessage(input_server);
+		if(Base_64cipheredChallenge.startsWith("[SYSTEM]")){ // si première connexion
+			output_client.println("[CLIENT] Registered !");
+		}else{ // si connexion ---> challengeProcess
 
-		byte[] cipheredChallenge = null;
-		byte[] unciphered = null;
-		try {
-			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
-			cipheredChallenge = decoder.decodeBuffer(Base_64cipheredChallenge);
-		} catch (Exception e) {
-			output_client.println("Erreur decodage base64");
+			output_client.println("Challenge: <"+Base_64cipheredChallenge+">");
+			byte[] cipheredChallenge = null;
+			byte[] unciphered = null;
+			try {
+				sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+				cipheredChallenge = decoder.decodeBuffer(Base_64cipheredChallenge);
+			} catch (Exception e) {
+				output_client.println("Erreur decodage du Base_64cipheredChallenge");
+			}
+			output_client.println("Decodage challenge (now chiffre): <"+new String(cipheredChallenge)+">");
+			
+			// envoit du cipher vers la CaP (et reception du unciphered)
+			unciphered = cipherGeneric(INS_RSA_DECRYPT, cipheredChallenge);
+			output_client.println("Uncipher challenge: <"+new String(unciphered)+">");
+			//envoit du unciphered
+			String encodedUnciphered = encoder.encode(unciphered);
+			encodedUnciphered = encodedUnciphered.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+			send(encodedUnciphered);
 		}
 		
-		// envoit du cipher vers la CaP (et reception du unciphered)
-		unciphered = cipherGeneric(INS_RSA_DECRYPT, cipheredChallenge);
-
-		//envoit du unciphered
-		String encodedUnciphered = encoder.encode(unciphered);
-		encodedUnciphered = encodedUnciphered.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-		send(encodedUnciphered);
 	}
 
 	// NB: cote client, on recupere modulus et exposant de la carte;

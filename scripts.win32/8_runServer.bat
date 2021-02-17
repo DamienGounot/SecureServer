@@ -1,4 +1,4 @@
-@echo on
+@echo off
 
 call .\setenv.bat
 
