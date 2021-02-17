@@ -93,7 +93,7 @@ public class ServiceChat extends Thread {
 			System.out.println("Username: <"+this.username+">");
 			this.Base64_exposant = loginRequest.split(" ")[2]; // pour garder uniquement le base64 de l'exposant
 			System.out.println("Exposent: <"+this.Base64_exposant+">");
-			this.Base64_modulus = loginRequest.split(" ")[2]; // pour garder uniquement le base64 du modulus
+			this.Base64_modulus = loginRequest.split(" ")[3]; // pour garder uniquement le base64 du modulus
 			System.out.println("Modulus: <"+this.Base64_modulus+">");
 			try {
 				this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
