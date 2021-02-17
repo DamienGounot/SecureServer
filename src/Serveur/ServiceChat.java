@@ -9,6 +9,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.RSAPrivateKeySpec;
 import javax.crypto.Cipher;
 import sun.misc.BASE64Encoder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.*;
 import java.net.*;
@@ -37,6 +38,7 @@ public class ServiceChat extends Thread {
 	boolean loop = true;
 	PublicKey pubRSAkey;
 	String loginRequest = "";
+	byte[] challengeBytes = new byte[DATASIZE];
 
 	public ServiceChat(Socket socket) {
 		this.socket = socket;
@@ -93,7 +95,12 @@ public class ServiceChat extends Thread {
 			System.out.println("Exposent: <"+this.Base64_exposant+">");
 			this.Base64_modulus = loginRequest.split(" ")[2]; // pour garder uniquement le base64 du modulus
 			System.out.println("Modulus: <"+this.Base64_modulus+">");
-			this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
+			try {
+				this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
+			} catch (Exception e) {
+				System.out.println("[ERREUR] creation de la clef RSA");
+			}
+			
 
 			if (usernameExist(this.username)) {
 				output.println("[SYSTEM] Username '"+ this.username + "' was found !");	
@@ -194,19 +201,31 @@ public class ServiceChat extends Thread {
 	}
 
 	private boolean checkRSA(String user) {
-		PublicKey pubKey;
+		PublicKey pubKey = null;
 		for (int i = 0; i < usernames.size(); i++) {
 			String username = usernames.get(i);
 			if (username.equals(user)) {
-				pubKey =  pubRSAkey.get(i);
+				pubKey =  rsaPubKeys.get(i);
 			}
 		}
 
 		String cipheredChallenge = genChallenge(pubKey); 
-		output(cipheredChallenge);
+		output.println(cipheredChallenge);
 		// receive uncipher
-		// si uncipher == challenge ---> return true
+		String Base64Uncipher = getMessage();
+		byte[] uncipher = null;
+		try {
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			uncipher = decoder.decodeBuffer(Base64Uncipher);
+		} catch (Exception e) {
+			output.println("Erreur decodage base64");
+		}
 
+		// si uncipher == challenge ---> return true
+		if(uncipher.equals(this.challengeBytes)) {
+			return true;
+		}
+		
 		return false;
 	}
 
@@ -214,7 +233,6 @@ public class ServiceChat extends Thread {
 		
 		Random r = new Random((0));
 		BASE64Encoder encoder = new BASE64Encoder();
-		byte[] challengeBytes = new byte[DATASIZE];
 		r.nextBytes( challengeBytes );
 		byte[] cipher = cipher(challengeBytes,pubKey);
 		String encodedCipher = encoder.encode(cipher);
@@ -225,15 +243,19 @@ public class ServiceChat extends Thread {
 
 	private byte[] cipher(byte[] challengeBytes,PublicKey pub){
 		Security.addProvider(new BouncyCastleProvider());
-		Cipher cRSA_NO_PAD = Cipher.getInstance( "RSA/NONE/NoPadding", "BC" );
-		cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
-		byte[] ciphered = new byte[DATASIZE];
-		System.out.println( "*" );
-		cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
+		byte[] ciphered =null;
+		Cipher cRSA_NO_PAD = null;
+		try {
+			cRSA_NO_PAD = Cipher.getInstance( "RSA/NONE/NoPadding", "BC" );
+			cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
+			 ciphered = new byte[DATASIZE];
+			System.out.println( "*" );
+			cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
+		} catch (Exception e) {
+			System.out.println("[Error] cipher serveur side");
+		}
 		//ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
-		System.out.println( "*" );
-		System.out.println("ciphered by serv is:\n" + encoder.encode(ciphered) + "\n" );
-
+		return ciphered;
 	}
 	
 
@@ -308,8 +330,8 @@ public class ServiceChat extends Thread {
 
 
 	private PublicKey createRSAKey(String base64_pub_s, String base64_mod_s) throws Exception {
-		byte[] b_pub_s;
-		byte[] b_mod_s;
+		byte[] b_pub_s = null;
+		byte[] b_mod_s = null;
 		
 		try {
 			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
