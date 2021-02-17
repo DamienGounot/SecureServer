@@ -59,6 +59,9 @@ public class TheClient extends Thread{
 	PrintStream output_server;
 
 	String randomStrfilename = "";
+
+	String mod_s = "";
+	String pub_s ="";
 	PublicKey pubRSAkey;
 
 	final static short CIPHER_MAXLENGTH = 240;
@@ -106,9 +109,13 @@ public class TheClient extends Thread{
 		if (noError){
 			
 			try {
-				this.pubRSAkey = initRSA();
+				this.pub_s = initExposant();
+				this.mod_s = initModulus();
+				this.pubRSAkey = createRSAKey(this.pub_s,this.mod_s);
+				output_client.println("Pub:"+pub_s);
+				output_client.println("Mod:"+mod_s);
 			} catch( Exception e ) {
-			System.out.println( "[Error] InitRSA: " + e );
+			System.out.println( "Erreur lors de la conversion des exposants: " + e );
 			}
 			this.start();
 			read();
@@ -226,19 +233,26 @@ public class TheClient extends Thread{
 
 	/************************************************/
 
-	private PublicKey initRSA() throws Exception {
-
+	private String initModulus() throws Exception{
 		// Get keys binary (byte[]) content (step 1)
 		byte[] modulus_b = getModulus();
-		byte[] public_exponent_b = getPublicExponent();
 		// Transform byte[] into String (step 2)
 		String mod_s =  HexString.hexify( modulus_b );
 		mod_s = mod_s.replaceAll( " ", "" );
 		mod_s = mod_s.replaceAll( "\n", "" );
+		return mod_s;
+	}
 
+	private String initExposant() throws Exception{
+		// Get keys binary (byte[]) content (step 1)
+		byte[] public_exponent_b = getPublicExponent();
+		// Transform byte[] into String (step 2)
 		String pub_s =  HexString.hexify( public_exponent_b );
 		pub_s = pub_s.replaceAll( " ", "" );
 		pub_s = pub_s.replaceAll( "\n", "" );
+		return pub_s;
+	}
+	private PublicKey createRSAKey(String pub_s, String mod_s) throws Exception {
 
 		// Load the keys from String into BigIntegers (step 3)
 		BigInteger modulus = new BigInteger(mod_s, 16);
@@ -262,15 +276,6 @@ public class TheClient extends Thread{
 		Security.addProvider(new BouncyCastleProvider());
 		Cipher cRSA_NO_PAD = Cipher.getInstance( "RSA/NONE/NoPadding", "BC" );
 
-		// Get challenge data (step 2)
-		final int DATASIZE = 128;				//128 to use with RSA1024_NO_PAD
-		//Random r = new Random( (new Date()).getTime() );
-		Random r = new Random((0));
-		BASE64Encoder encoder = new BASE64Encoder();
-		byte[] challengeBytes = new byte[DATASIZE];
-		r.nextBytes( challengeBytes );
-		System.out.println("challenge:\n" + encoder.encode( challengeBytes ) + "\n" );
-		
 		// Crypt with public key (step 3)
 		cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
 		byte[] ciphered = new byte[DATASIZE];
@@ -344,7 +349,20 @@ public class TheClient extends Thread{
 		return exponent;
 	}
 
-	// NB: cote client, on recupere modulus et exposant de la carte, puis on peut creer notre obj RSAPrivate;
+	private void loginRequest(String request){
+		sun.misc.BASE64Encoder encoder = new sun.misc.BASE64Encoder();
+		String encodedModulus = encoder.encode(this.mod_s.getBytes());
+		encodedModulus = encodedModulus.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+		String encodedExponent = encoder.encode(this.pub_s.getBytes());
+		encodedExponent = encodedExponent.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+		String messageTransform = request + " " + encodedExponent + " " + encodedModulus;
+		send(messageTransform);	
+
+		//NB: On receptionne le cipheredChallenge a partir d'ici
+
+	}
+
+	// NB: cote client, on recupere modulus et exposant de la carte;
 	// On send au serveur le modulus et l'exposant au serveur ---> lui permet de creer l'objet RSApubKey 
 	// le serveur genere un challenge qu'il peut chiffrer avec la pubKey
 	// cote client on peut Decrypt avec l'apdu , puis renvoyer au serveur le déchiffrer
@@ -394,10 +412,10 @@ public class TheClient extends Thread{
 							if(message.startsWith("/login ")){ 
 
 							StringTokenizer st = new StringTokenizer(message);
-							if(st.countTokens() == 3){
-									send(message);
+							if(st.countTokens() == 2){
+									loginRequest(message);
 							}else{
-								output_client.println("Error: Wrong number of argument, command is: /login <username> <password>");
+								output_client.println("Error: Wrong number of argument, command is: /login <username>");
 							}
 
 						}else if(message.equals("/quit")){
@@ -413,7 +431,7 @@ public class TheClient extends Thread{
 						}else if(message.equals("/help")){
 							help();
 						}else{
-							output_client.println("You should log in first !");
+							output_client.println("You should log in first with : /login <username> !");
 						}
 
 					}else{	// Si user est log
