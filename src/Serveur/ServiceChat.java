@@ -1,26 +1,44 @@
+import java.math.BigInteger;
+import java.util.Date;
+import java.util.Random;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.RSAPrivateKeySpec;
+import javax.crypto.Cipher;
+import sun.misc.BASE64Encoder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
 public class ServiceChat extends Thread {
-
+	final static int DATASIZE = 128; //128 to use with RSA1024_NO_PAD
 	boolean debug = true;
 
 	final static int NB_USERS_MAX = 3;
 	static int nb_users = 0;
 	static PrintStream[] outputs = new PrintStream[NB_USERS_MAX];
 	static ArrayList<String> usernames = new ArrayList<String>();
-	static ArrayList<String> passwords = new ArrayList<String>();
+	static ArrayList<PublicKey> rsaPubKeys = new ArrayList<PublicKey>();
 	static ServiceChat[] serviceChat = new ServiceChat[NB_USERS_MAX];
+
 	
 	Socket socket;
 	BufferedReader input;
 	PrintStream output;
 	String username;
-	String password;
+	String Base64_exposant;
+	String Base64_modulus;
 	boolean isOnline = false;
 	int id_user;
 	boolean loop = true;
+	PublicKey pubRSAkey;
+	String loginRequest = "";
+	byte[] challengeBytes = new byte[DATASIZE];
 
 	public ServiceChat(Socket socket) {
 		this.socket = socket;
@@ -34,6 +52,8 @@ public class ServiceChat extends Thread {
 	}
 
 	private void mainLoop() {
+
+
 		while (loop) {
 			String message = getMessage();
 			analyseMessage(message);
@@ -66,33 +86,43 @@ public class ServiceChat extends Thread {
 			nb_users++;
 
 			output.println("[SYSTEM] Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
-			output.println("[SYSTEM] Enter your username: ");
-			this.username = getMessage();
-			this.username = this.username.split(" ")[1]; // pour garder uniquement le username (et pas le "MESSAGETYPE")
-			System.out.println("Username: <"+this.username+">");
+			output.println("[SYSTEM] use /login <username> to connect: ");
+			loginRequest = getMessage();
+			//System.out.println("login request: "+loginRequest+">");
+			this.username = loginRequest.split(" ")[1]; // pour garder uniquement le username
+			//System.out.println("Username: <"+this.username+">");
+			this.Base64_exposant = loginRequest.split(" ")[2]; // pour garder uniquement le base64 de l'exposant
+			//System.out.println("Exposent: <"+this.Base64_exposant+">");
+			this.Base64_modulus = loginRequest.split(" ")[3]; // pour garder uniquement le base64 du modulus
+			//System.out.println("Modulus: <"+this.Base64_modulus+">");
+			try {
+				this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
+			} catch (Exception e) {
+				System.out.println("[ERREUR] creation de la clef RSA");
+			}
+			
 
 			if (usernameExist(this.username)) {
-				output.println("[SYSTEM] Username '"+ this.username + "' was found !");
-				output.println("[SYSTEM] Enter associated password...");
-				this.password = getMessage();
-				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
-				if (checkPassword(this.username, this.password)) {
+				output.println("[SYSTEM] Username '"+ this.username + "' was found !");	
+				if (checkRSA(this.username)) {
+					output.println("[SYSTEM] Successfull login !");
 					broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 					this.isOnline = true;
 					userList();
 					if(debug)System.out.println("[DEBUG] Username: "+this.username+" , ID: "+this.id_user);				
 					return true;
 				} else {
+					output.println("[SYSTEM] Credentials are not valid !");
 					disconnect("error");
 					return false;
 				}
 			} else {
-				output.println("[SYSTEM] Enter your password: ");
-				this.password = getMessage();
-				this.password = this.password.split(" ")[1]; // pour garder uniquement le password (et pas le "MESSAGETYPE")
-				System.out.println("Password: <"+this.password+">");
+				// Ici ajouter le username et sa clef public associée
 				usernames.add(this.username);
-				passwords.add(this.password);
+				rsaPubKeys.add(this.pubRSAkey);
+				output.println("[SYSTEM] Successfull login (user added) !");
+				System.out.print("Username: "+this.username);
+				System.out.print("RSA: "+this.pubRSAkey.toString());
 				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();
@@ -157,7 +187,7 @@ public class ServiceChat extends Thread {
 			}else{ // on récupère le userID et on lui envoit en MP
 				int userID = getUserID(command[1]);
 				if(userID == -1){
-					output.println("[SYSTEM] Error: The user '"+command[2]+"' does not exist or is not online !");
+					output.println("[SYSTEM] Error: The user '"+command[1]+"' does not exist or is not online !");
 				}else{
 					sendFile(userID, command);
 					
@@ -172,15 +202,72 @@ public class ServiceChat extends Thread {
 		return (usernames.contains(name));
 	}
 
-	private boolean checkPassword(String user, String pass) {
-		for (int i = 0; i < usernames.size(); i++) {
-			String username = usernames.get(i);
-			if (username.equals(user)) {
-				return passwords.get(i).equals(pass);
+	private boolean checkRSA(String user) {
+		PublicKey pubKey = null;
+			for (int i = 0; i < usernames.size(); i++) {
+				String username = usernames.get(i);
+				if (username.equals(user)) {
+					pubKey =  rsaPubKeys.get(i);
+				}
 			}
+
+		String Base64cipheredChallenge = genBase64CipherChallenge(pubKey);
+		
+		output.println(Base64cipheredChallenge);
+		// receive uncipher
+		String Base64Uncipher = getMessage();
+		System.out.println("Reception of Base64 uncipher is: <"+new String(Base64Uncipher)+">");
+		byte[] uncipher = null;
+		try {
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			uncipher = decoder.decodeBuffer(Base64Uncipher);
+		} catch (Exception e) {
+			output.println("Erreur decodage base64");
 		}
+
+		System.out.println("Raw Challenge is: <"+new String(uncipher)+">");
+
+		// si uncipher == challenge ---> return true
+		System.out.println("Expected Challenge is: <"+new String(this.challengeBytes)+">");
+		if(Arrays.equals(uncipher,this.challengeBytes)) {
+			return true;
+		}
+		
 		return false;
 	}
+
+	private String genBase64CipherChallenge(PublicKey pubKey){
+		
+		Random r = new Random((0));
+		BASE64Encoder encoder = new BASE64Encoder();
+		r.nextBytes( challengeBytes );
+		System.out.println("Raw Challenge is: <"+new String(challengeBytes)+">");
+		byte[] cipher = cipher(challengeBytes,pubKey);
+		System.out.println("Cipher Challenge is: <"+new String(cipher)+">");
+		String encodedCipher = encoder.encode(cipher);
+		encodedCipher = encodedCipher.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+		System.out.println("Base64 Cipher Challenge is: <"+new String(encodedCipher)+">");
+		return encodedCipher;
+	}
+
+	private byte[] cipher(byte[] challengeBytes,PublicKey pub){
+		Security.addProvider(new BouncyCastleProvider());
+		byte[] ciphered =null;
+		Cipher cRSA_NO_PAD = null;
+		try {
+			cRSA_NO_PAD = Cipher.getInstance( "RSA/NONE/NoPadding", "BC" );
+			cRSA_NO_PAD.init( Cipher.ENCRYPT_MODE, pub );
+			 ciphered = new byte[DATASIZE];
+			System.out.println( "*" );
+			cRSA_NO_PAD.doFinal(challengeBytes, 0, DATASIZE, ciphered, 0);
+		} catch (Exception e) {
+			System.out.println("[Error] cipher serveur side");
+			e.printStackTrace();
+		}
+		//ciphered = cRSA_NO_PAD.doFinal( challengeBytes );
+		return ciphered;
+	}
+	
 
 	private void disconnect(String flag) {
 
@@ -250,4 +337,39 @@ public class ServiceChat extends Thread {
 			}
 		}
 	}
+
+
+	private PublicKey createRSAKey(String base64_pub_s, String base64_mod_s) throws Exception {
+		byte[] b_pub_s = null;
+		byte[] b_mod_s = null;
+		
+		try {
+			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
+			b_pub_s = decoder.decodeBuffer(base64_pub_s);
+			b_mod_s = decoder.decodeBuffer(base64_mod_s);
+
+		} catch (Exception e) {
+			output.println("Erreur decodage base64");
+		}
+
+		String mod_s = new String(b_mod_s);
+		String pub_s = new String(b_pub_s);
+		//System.out.println("Mod: <"+mod_s+">");
+		//System.out.println("Pub: <"+pub_s+">");
+
+		// Load the keys from String into BigIntegers (step 3)
+		BigInteger modulus = new BigInteger(mod_s, 16);
+		BigInteger pubExponent = new BigInteger(pub_s, 16);
+
+		// Create public key specs from BinIntegers (step 4)
+		RSAPublicKeySpec publicSpec = new RSAPublicKeySpec(modulus, pubExponent);
+
+		// Create the RSA  public keys (step 5)
+		KeyFactory factory = KeyFactory.getInstance( "RSA" );
+		PublicKey pub = factory.generatePublic(publicSpec);
+
+		return pub;
+	}
+
+
 }

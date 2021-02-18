@@ -1,4 +1,6 @@
 set PROJECT=Client
+set SERVEUR=Serveur
+set CHATSERVEUR=ChatServer
 
 set DIR=..
 set OUT=%DIR%\out
