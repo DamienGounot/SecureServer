@@ -350,6 +350,7 @@ public class TheClient extends Thread{
 			//envoit du unciphered
 			String encodedUnciphered = encoder.encode(unciphered);
 			encodedUnciphered = encodedUnciphered.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
+			output_client.println("Base64 challenge is: <"+new String(encodedUnciphered)+">");
 			send(encodedUnciphered);
 		}
 		

@@ -204,12 +204,12 @@ public class ServiceChat extends Thread {
 
 	private boolean checkRSA(String user) {
 		PublicKey pubKey = null;
-		for (int i = 0; i < usernames.size(); i++) {
-			String username = usernames.get(i);
-			if (username.equals(user)) {
-				pubKey =  rsaPubKeys.get(i);
+			for (int i = 0; i < usernames.size(); i++) {
+				String username = usernames.get(i);
+				if (username.equals(user)) {
+					pubKey =  rsaPubKeys.get(i);
+				}
 			}
-		}
 
 		String Base64cipheredChallenge = genBase64CipherChallenge(pubKey);
 		
@@ -228,7 +228,8 @@ public class ServiceChat extends Thread {
 		System.out.println("Raw Challenge is: <"+new String(uncipher)+">");
 
 		// si uncipher == challenge ---> return true
-		if(uncipher.equals(this.challengeBytes)) {
+		System.out.println("Expected Challenge is: <"+new String(this.challengeBytes)+">");
+		if(Arrays.equals(uncipher,this.challengeBytes)) {
 			return true;
 		}
 		
