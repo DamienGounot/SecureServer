@@ -104,6 +104,7 @@ public class TheApplet extends Applet {
 		((RSAPrivateKey)privateRSAKey).setModulus(n, (short)0, (short)(cipherRSAKeyLength/8));
 		((RSAPrivateKey)privateRSAKey).setExponent(d, (short)0, (short)(cipherRSAKeyLength/8));
 		// get cipher RSA instance
+		generateRSAKey();
 		cRSA_NO_PAD = Cipher.getInstance((byte)0x0C, false );
 
 		cRSA_NO_PAD_ENC = Cipher.getInstance((byte)0x0C, false );
@@ -118,6 +119,13 @@ public class TheApplet extends Applet {
 
 		register();
 
+	}
+
+		void generateRSAKey() {
+		keyPair = new KeyPair(KeyPair.ALG_RSA, (short)publicRSAKey.getSize());
+		keyPair.genKeyPair();
+		publicRSAKey = keyPair.getPublic();
+		privateRSAKey = keyPair.getPrivate();
 	}
 
 
@@ -161,7 +169,7 @@ public class TheApplet extends Applet {
 			ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
 
 		switch(buffer[ISO7816.OFFSET_INS]) {
-			case INS_GENERATE_RSA_KEY: generateRSAKey(); break;
+		//	case INS_GENERATE_RSA_KEY: generateRSAKey(); break;
 		//	case INS_RSA_ENCRYPT: RSAEncrypt(apdu); break;
 		//	case INS_RSA_DECRYPT: RSADecrypt(apdu); break;
 			case INS_RSA_ENCRYPT: cipherGeneric( apdu, cRSA_NO_PAD_ENC); break;
@@ -172,14 +180,6 @@ public class TheApplet extends Applet {
 			// case INS_PUT_PUBLIC_RSA_KEY: putPublicRSAKey(apdu); break;
 			default: ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
 		}
-	}
-
-
-	void generateRSAKey() {
-		keyPair = new KeyPair(KeyPair.ALG_RSA, (short)publicRSAKey.getSize());
-		keyPair.genKeyPair();
-		publicRSAKey = keyPair.getPublic();
-		privateRSAKey = keyPair.getPrivate();
 	}
 
 
