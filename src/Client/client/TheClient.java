@@ -43,7 +43,7 @@ public class TheClient extends Thread{
 	private final static byte INS_GET_PUBLIC_RSA_KEY      = (byte)0xFE;
 	private PassThruCardService servClient = null;
 	final static boolean DISPLAYAPDUS = true;
-	boolean DISPLAY = true;
+	boolean DISPLAY = false;
 
 	// ----------------------------------------------------------
 
@@ -63,6 +63,7 @@ public class TheClient extends Thread{
 	String mod_s = "";
 	String pub_s ="";
 	PublicKey pubRSAkey;
+	
 
 	final static short CIPHER_MAXLENGTH = 240;
 
@@ -302,7 +303,7 @@ public class TheClient extends Thread{
 		
 		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x00,0x00};
 		CommandAPDU cmd = new CommandAPDU( apdu );
-		ResponseAPDU resp = sendAPDU( cmd, false );
+		ResponseAPDU resp = sendAPDU( cmd, DISPLAY );
 		byte[] response = resp.getBytes();
 		byte[] modulus = new byte[response.length-3];
 		System.arraycopy(response, 1, modulus, 0,(response.length-3));
@@ -312,7 +313,7 @@ public class TheClient extends Thread{
 	private byte[] getPublicExponent(){
 		byte[] apdu = {CLA_TEST,INS_GET_PUBLIC_RSA_KEY,0x00,0x01,0x00};
 		CommandAPDU cmd = new CommandAPDU( apdu );
-		ResponseAPDU resp = sendAPDU( cmd, false );
+		ResponseAPDU resp = sendAPDU( cmd, DISPLAY );
 		byte[] response = resp.getBytes();
 		byte[] exponent = new byte[response.length-3];
 		System.arraycopy(response, 1, exponent, 0,(response.length-3));
@@ -333,7 +334,7 @@ public class TheClient extends Thread{
 			output_client.println("[CLIENT] Registered !");
 		}else{ // si connexion ---> challengeProcess
 
-			output_client.println("Challenge: <"+Base_64cipheredChallenge+">");
+			//output_client.println("Challenge: <"+Base_64cipheredChallenge+">");
 			byte[] cipheredChallenge = null;
 			byte[] unciphered = null;
 			try {
@@ -342,15 +343,15 @@ public class TheClient extends Thread{
 			} catch (Exception e) {
 				output_client.println("Erreur decodage du Base_64cipheredChallenge");
 			}
-			output_client.println("Decodage challenge (now chiffre): <"+new String(cipheredChallenge)+">");
+			//output_client.println("Decodage challenge (now chiffre): <"+new String(cipheredChallenge)+">");
 			
 			// envoit du cipher vers la CaP (et reception du unciphered)
 			unciphered = cipherGeneric(INS_RSA_DECRYPT, cipheredChallenge);
-			output_client.println("Uncipher challenge: <"+new String(unciphered)+">");
+			//output_client.println("Uncipher challenge: <"+new String(unciphered)+">");
 			//envoit du unciphered
 			String encodedUnciphered = encoder.encode(unciphered);
 			encodedUnciphered = encodedUnciphered.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-			output_client.println("Base64 challenge is: <"+new String(encodedUnciphered)+">");
+			//output_client.println("Base64 challenge is: <"+new String(encodedUnciphered)+">");
 			send(encodedUnciphered);
 		}
 		
@@ -377,7 +378,9 @@ public class TheClient extends Thread{
 	private void listen() { // ecoute ce qui arrive du serveur
 		while (loop) {
 			String message = getMessage(input_server);
+
 			receive(message);
+
 			try {
 				if(message.startsWith("[SYSTEM] Server is full")){
 					System.exit(0);
@@ -653,7 +656,8 @@ public class TheClient extends Thread{
 			msg = buffer.readLine();
 
 		} catch (IOException e) {
-			output_client.println("[ERROR] getMessage()");
+			output_client.println("Closing connexion...");
+			System.exit(0);
 		}
 		return msg;
 	}
@@ -667,7 +671,14 @@ public class TheClient extends Thread{
 	}
 
 	private void receive(String message){
-		String[] command = message.split(" ");
+		String[] command = null;
+		try {
+			command = message.split(" ");
+		} catch (Exception e) {
+			output_client.println("Closing connexion...");
+			System.exit(0);
+		}
+		 
 		String toDisplay ="";
 		
 
@@ -764,7 +775,8 @@ public class TheClient extends Thread{
 							receivedFile = new DataOutputStream(new FileOutputStream(randomStrfilename+"_"+filename,true)); // true pour append
 							receivedFile.write(response, 0, return_value-padding_extrait);
 							receivedFile.close();						
-						}					
+						}
+						output_client.println("Receiving Block "+blockNumber+" of file: "+filename);				
 	
 				}catch(Exception e){
 					output_client.println("Erreur lors de la reception d'un block de fichier");

@@ -39,6 +39,8 @@ public class ServiceChat extends Thread {
 	PublicKey pubRSAkey;
 	String loginRequest = "";
 	byte[] challengeBytes = new byte[DATASIZE];
+			
+	Boolean errorRequest;
 
 	public ServiceChat(Socket socket) {
 		this.socket = socket;
@@ -55,7 +57,8 @@ public class ServiceChat extends Thread {
 
 
 		while (loop) {
-			String message = getMessage();
+			String message = "";
+			message = getMessage();
 			analyseMessage(message);
 		}
 	}
@@ -88,13 +91,26 @@ public class ServiceChat extends Thread {
 			output.println("[SYSTEM] Welcome on chat (" +nb_users+"/"+NB_USERS_MAX+")");
 			output.println("[SYSTEM] use /login <username> to connect: ");
 			loginRequest = getMessage();
-			//System.out.println("login request: "+loginRequest+">");
-			this.username = loginRequest.split(" ")[1]; // pour garder uniquement le username
-			//System.out.println("Username: <"+this.username+">");
-			this.Base64_exposant = loginRequest.split(" ")[2]; // pour garder uniquement le base64 de l'exposant
-			//System.out.println("Exposent: <"+this.Base64_exposant+">");
-			this.Base64_modulus = loginRequest.split(" ")[3]; // pour garder uniquement le base64 du modulus
-			//System.out.println("Modulus: <"+this.Base64_modulus+">");
+
+			try {
+				if(debug)System.out.println("login request: "+loginRequest+">");
+				this.username = loginRequest.split(" ")[1]; // pour garder uniquement le username
+				if(debug)System.out.println("Username: <"+this.username+">");
+				this.Base64_exposant = loginRequest.split(" ")[2]; // pour garder uniquement le base64 de l'exposant
+				if(debug)System.out.println("Exposent: <"+this.Base64_exposant+">");
+				this.Base64_modulus = loginRequest.split(" ")[3]; // pour garder uniquement le base64 du modulus
+				if(debug)System.out.println("Modulus: <"+this.Base64_modulus+">");
+			} catch (Exception e) {
+				if(loginRequest.equals("/quit")){
+					output.println("[SYSTEM] Bye !");
+				}else{
+					output.println("[SYSTEM] error request");
+				}
+				disconnect("error");
+				return false;
+
+			}
+
 			try {
 				this.pubRSAkey = createRSAKey(this.Base64_exposant, this.Base64_modulus);
 			} catch (Exception e) {
@@ -121,8 +137,8 @@ public class ServiceChat extends Thread {
 				usernames.add(this.username);
 				rsaPubKeys.add(this.pubRSAkey);
 				output.println("[SYSTEM] Successfull login (user added) !");
-				System.out.print("Username: "+this.username);
-				System.out.print("RSA: "+this.pubRSAkey.toString());
+				if(debug)System.out.print("Username: "+this.username);
+				if(debug)System.out.print("RSA: "+this.pubRSAkey.toString());
 				broadCast("[SYSTEM] " + username + " has join the chat (" +nb_users+"/"+NB_USERS_MAX+")");
 				this.isOnline = true;
 				userList();
@@ -136,7 +152,7 @@ public class ServiceChat extends Thread {
 	public synchronized void broadCast(String input) {
 		for (int i = 0; i < nb_users; i++) {
 			try {
-				System.out.println("En sortie de serveur: <"+input+">");
+				if(debug)System.out.println("En sortie de serveur: <"+input+">");
 				outputs[i].println(input);
 			} catch (Exception e) {
 				continue;
@@ -156,7 +172,10 @@ public class ServiceChat extends Thread {
 	}
 
 	private void analyseMessage(String msg) {
-		if(debug)System.out.println("Reception: <"+msg+">");
+		System.out.println("Reception: <"+msg+">");
+		if(msg.equals("")){
+			disconnect("error");
+		}
 		String[] command = msg.split(" ");
 
 		if(command[0].equals("/quit")){
@@ -216,7 +235,7 @@ public class ServiceChat extends Thread {
 		output.println(Base64cipheredChallenge);
 		// receive uncipher
 		String Base64Uncipher = getMessage();
-		System.out.println("Reception of Base64 uncipher is: <"+new String(Base64Uncipher)+">");
+		if(debug)System.out.println("Reception of Base64 uncipher is: <"+new String(Base64Uncipher)+">");
 		byte[] uncipher = null;
 		try {
 			sun.misc.BASE64Decoder decoder = new sun.misc.BASE64Decoder();
@@ -225,10 +244,10 @@ public class ServiceChat extends Thread {
 			output.println("Erreur decodage base64");
 		}
 
-		System.out.println("Raw Challenge is: <"+new String(uncipher)+">");
+		if(debug)System.out.println("Raw Challenge is: <"+new String(uncipher)+">");
 
 		// si uncipher == challenge ---> return true
-		System.out.println("Expected Challenge is: <"+new String(this.challengeBytes)+">");
+		if(debug)System.out.println("Expected Challenge is: <"+new String(this.challengeBytes)+">");
 		if(Arrays.equals(uncipher,this.challengeBytes)) {
 			return true;
 		}
@@ -241,12 +260,12 @@ public class ServiceChat extends Thread {
 		Random r = new Random((0));
 		BASE64Encoder encoder = new BASE64Encoder();
 		r.nextBytes( challengeBytes );
-		System.out.println("Raw Challenge is: <"+new String(challengeBytes)+">");
+		if(debug)System.out.println("Raw Challenge is: <"+new String(challengeBytes)+">");
 		byte[] cipher = cipher(challengeBytes,pubKey);
-		System.out.println("Cipher Challenge is: <"+new String(cipher)+">");
+		if(debug)System.out.println("Cipher Challenge is: <"+new String(cipher)+">");
 		String encodedCipher = encoder.encode(cipher);
 		encodedCipher = encodedCipher.replaceAll("(?:\\r\\n|\\n\\r|\\n|\\r)", "");
-		System.out.println("Base64 Cipher Challenge is: <"+new String(encodedCipher)+">");
+		if(debug)System.out.println("Base64 Cipher Challenge is: <"+new String(encodedCipher)+">");
 		return encodedCipher;
 	}
 
@@ -320,7 +339,7 @@ public class ServiceChat extends Thread {
 		return -1;
 	}
 	private void send(int userID, String[] command){
-		System.out.println("En sortie de serveur: <MESSAGETYPE [Private]<" + this.username + "> "+command[3]+">");
+		if(debug)System.out.println("En sortie de serveur: <MESSAGETYPE [Private]<" + this.username + "> "+command[3]+">");
 		outputs[userID].println("MESSAGETYPE [Private]<" + this.username + "> "+command[3]);
 	}
 
