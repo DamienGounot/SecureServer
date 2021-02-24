@@ -662,6 +662,12 @@ public class TheClient extends Thread{
 		return msg;
 	}
 
+	private String unpadMessage(String message){
+		int padding_extrait = (message.charAt(message.length()-1)-48); //(-48 pour offset dans la table ASCII)
+		String unpadStr = message.substring(0, message.length()-padding_extrait);
+		return unpadStr;
+	}
+
 	private void send(String message){
 		try {
 			output_server.println(message);
@@ -703,7 +709,8 @@ public class TheClient extends Thread{
 			if(return_value == CIPHER_MAXLENGTH){
 				uncipherBlock = cipherGeneric(INS_DES_ECB_NOPAD_DEC, msgData);
 				String outputStr = new String(uncipherBlock);
-				output_client.println(command[1]+outputStr);		
+				String unpadOutput = unpadMessage(outputStr);
+				output_client.println(command[1]+unpadOutput);		
 			}else{
 							// extration du bon bout
 							byte[] finalData = new byte[return_value];
@@ -714,7 +721,8 @@ public class TheClient extends Thread{
 							int padding_extrait = (uncipherBlock[return_value-1]-48); //(-48 pour offset dans la table ASCII)
 							String outputStr = new String(uncipherBlock);
 							//NB: reste a retirer le padding
-							output_client.println(command[1]+outputStr);
+							String unpadOutput = unpadMessage(outputStr);
+							output_client.println(command[1]+unpadOutput);
 						
 
 			}
